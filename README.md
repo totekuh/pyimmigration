@@ -1,3 +1,2 @@
 # pyimmigration
-A python script to immigrate to another country </br>
-Your involvement is appriciated.
+A python script to discover and collect a dataset of jobs applications. </br>
