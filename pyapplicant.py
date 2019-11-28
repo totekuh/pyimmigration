@@ -6,7 +6,10 @@ import string
 import requests
 
 DEFAULT_LOGGING_LEVEL = 'INFO'
-PUBLISHER_ID = '7837020139926262'
+PUBLISHER_ID_FILE = 'publisher_id.txt'
+
+with open(PUBLISHER_ID_FILE, 'r', encoding='utf-8') as f:
+    PUBLISHER_ID = f.read()
 
 
 def get_arguments():
