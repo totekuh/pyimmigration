@@ -30,7 +30,7 @@ def get_arguments():
                              'The job keywords to search for must be specified with --search flag.')
     parser.add_argument('--search',
                         dest='search',
-                        required=False,
+                        required=True,
                         help='Keywords to search within crawler web sites or API\'s.')
     parser.add_argument('-l',
                         '--logging',
@@ -206,21 +206,20 @@ class LinkedInCrawler:
             logging.error(e)
 
 
-options = get_arguments()
-logging.basicConfig(format='[%(asctime)s %(levelname)s]: %(message)s',
-                    datefmt='%m/%d/%Y %I:%M:%S %p',
-                    level=options.logging)
+if __name__ == "__main__":
+    options = get_arguments()
+    logging.basicConfig(format='[%(asctime)s %(levelname)s]: %(message)s',
+                        datefmt='%m/%d/%Y %I:%M:%S %p',
+                        level=options.logging)
 
-search = options.search
-if not options.search:
-    raise Exception('You have to give something to search. Use --help for more info.')
-elif Path(search).exists():
-    with open(Path(search), 'r') as queries_f:
-        search = list([q.strip() for q in queries_f if q.strip()])
-else:
-    search = [search]
+    search = options.search
+    if Path(search).exists():
+        with open(Path(search), 'r') as queries_f:
+            search = list([q.strip() for q in queries_f if q.strip()])
+    else:
+        search = [search]
 
-if options.indeed:
-    indeed_crawler = IndeedCrawler(published_id=PUBLISHER_ID)
-    for query in search:
-        indeed_crawler.search_jobs(query, country="de")
+    if options.indeed:
+        indeed_crawler = IndeedCrawler(published_id=PUBLISHER_ID)
+        for query in search:
+            indeed_crawler.search_jobs(query, country="de")
