@@ -108,12 +108,15 @@ class IndeedCrawler:
                     self.dump_results(country_dir, query)
 
                 else:
-                    self.search_jobs(query, country, start + results_per_page)
+                    self.search_jobs(query, city, country, start + results_per_page)
 
             else:
                 logging.warning('Search jobs API has responded with unsuccessful status code')
                 logging.debug(resp.status_code)
                 logging.debug(resp.text)
+        except KeyboardInterrupt:
+            logging.warning("Search interrupted. Dumping current results.")
+            self.dump_results(country_dir, query)
         except Exception as e:
             logging.error(e)
 
@@ -213,6 +216,7 @@ if __name__ == "__main__":
                         level=options.logging)
 
     search = options.search
+    print(search)
     if Path(search).exists():
         with open(Path(search), 'r') as queries_f:
             search = list(q.strip() for q in queries_f if q.strip())
@@ -222,4 +226,4 @@ if __name__ == "__main__":
     if options.indeed:
         indeed_crawler = IndeedCrawler(publisher_id=PUBLISHER_ID)
         for query in search:
-            indeed_crawler.search_jobs(query, country="de")
+            indeed_crawler.search_jobs(query, country="us")
