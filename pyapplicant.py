@@ -36,6 +36,7 @@ def get_arguments():
                         '--logging',
                         dest='logging',
                         default=DEFAULT_LOGGING_LEVEL,
+                        choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"],
                         required=False,
                         help='Logging level. Default is ' + DEFAULT_LOGGING_LEVEL)
     return parser.parse_args()
@@ -216,7 +217,6 @@ if __name__ == "__main__":
                         level=options.logging)
 
     search = options.search
-    print(search)
     if Path(search).exists():
         with open(Path(search), 'r') as queries_f:
             search = list(q.strip() for q in queries_f if q.strip())
