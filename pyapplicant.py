@@ -59,8 +59,9 @@ class IndeedCrawler:
         logging.info(f"Saved {len(self.search_results)} to {save_path}")
 
     def search_jobs(self,
-                    search,
-                    country='us',
+                    query,
+                    city='',
+                    country='',
                     start=0,
                     results_per_page=25):
         # https://opensource.indeedeng.io/api-documentation/docs/job-search/
@@ -70,9 +71,9 @@ class IndeedCrawler:
             country_dir.mkdir(exist_ok=True)
         url = (
             f'http://api.indeed.com/ads/apisearch?publisher={self.publisher_id}&'
-            f'q={search}&'
+            f'q={query}&'
             'format=json&'
-            # 'l=austin%2C+tx&'
+            f'l={city}&'
             'sort=&'
             'radius=&'
             'st=&'
@@ -88,42 +89,50 @@ class IndeedCrawler:
             f'useragent={self.user_agent}&'
             'v=2'
         )
+
         try:
             resp = requests.get(url)
             if resp.ok:
-                logging.info('Jobs have been collected')
                 job_data = resp.json()
                 last_result = job_data['end']
                 total_results = job_data['totalResults']
-                logging.info(f'Collecting the jobs: {search}; country: {country} [{start}-{start + results_per_page} / {total_results}]')
+                logging.info(f'Searching jobs: {query}; country: {country} [{start}-{start + results_per_page} / {total_results}]')
                 self.search_results += job_data['results']
+
                 if last_result == API_RESULTS_LIMIT + results_per_page:
                     logging.warning(f"Reached {last_result} which is the API limit (bug?)")
-                    self.dump_results(country_dir, search)
+                    self.dump_results(country_dir, query)
+
                 elif last_result == total_results:
-                    logging.info(f"Done parsing {search}.")
-                    self.dump_results(country_dir, search)
+                    logging.info(f"Done parsing {query}.")
+                    self.dump_results(country_dir, query)
+
                 else:
-                    self.search_jobs(search, country, start + results_per_page)
+                    self.search_jobs(query, country, start + results_per_page)
+
             else:
-                logging.warning('Jobs API has responded with unsuccessful status code')
+                logging.warning('Search jobs API has responded with unsuccessful status code')
                 logging.debug(resp.status_code)
                 logging.debug(resp.text)
         except Exception as e:
             logging.error(e)
 
-    def get_job(self, job_key):
-        logging.info(f'Getting a job, job_key: {job_key}')
-        url = f'http://api.indeed.com/ads/apigetjobs?publisher={self.publisher_id}&' \
-            f'jobkeys={job_key}&' \
+    def get_jobs(self, job_keys):
+        job_keys = ','.join(job_keys)
+        logging.info(f'Getting jobs with job_keys: {job_keys}')
+        url = (
+            f'http://api.indeed.com/ads/apigetjobs?publisher={self.publisher_id}&'
+            f'jobkeys={job_keys}&'
             f'v=2'
+        )
+
         try:
             resp = requests.get(url)
             if resp.ok:
                 logging.info('Job details have been collected')
-                print(resp.text)
+                print(resp.json())
             else:
-                logging.warning('Get a job API has responded with unsuccessful status code')
+                logging.warning('Get jobs API has responded with unsuccessful status code')
                 logging.debug(resp.status_code)
                 logging.debug(resp.text)
         except Exception as e:
