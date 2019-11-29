@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import logging
+import json
+from pathlib import Path
 import random
 import string
 
@@ -7,6 +9,9 @@ import requests
 
 DEFAULT_LOGGING_LEVEL = 'INFO'
 PUBLISHER_ID_FILE = 'publisher_id.txt'
+API_RESULTS_LIMIT = 1000
+DATASET_DIR = Path("dataset")
+DATASET_DIR.mkdir(exist_ok=True)
 
 with open(PUBLISHER_ID_FILE, 'r', encoding='utf-8') as f:
     PUBLISHER_ID = f.read()
@@ -45,34 +50,61 @@ class IndeedCrawler:
         self.user_agent = 'Mozilla Firefox'
         self.user_ip = '127.0.0.1'
         self.job_types = ['fulltime', 'parttime', 'contract', 'internship', 'temporary']
+        self.search_results = []
+
+    def dump_results(self, country_dir, query):
+        save_path = country_dir / f"{query.replace(' ', '_')}.json"
+        with open(save_path, "w") as json_f:
+            json.dump(self.search_results, json_f)
+        logging.info(f"Saved {len(self.search_results)} to {save_path}")
 
     def search_jobs(self,
                     search,
-                    country='us'):
+                    country='us',
+                    start=0,
+                    results_per_page=25):
         # https://opensource.indeedeng.io/api-documentation/docs/job-search/
-        logging.info(f'Collecting the jobs: {search}; country: {country}')
-        url = f'http://api.indeed.com/ads/apisearch?publisher={self.publisher_id}&' \
-            f'q={search}&' \
-            'l=austin%2C+tx&' \
-            'sort=&' \
-            'radius=&' \
-            'st=&' \
-            'jt=&' \
-            'start=&' \
-            'limit=&' \
-            'fromage=&' \
-            'filter=&' \
-            'latlong=1&' \
-            f'co={country}&' \
-            'chnl=&' \
-            f'userip={self.user_ip}&' \
-            f'useragent={self.user_agent}&' \
+        country_dir = DATASET_DIR / country
+        if start == 0:
+            self.search_results = []
+            country_dir.mkdir(exist_ok=True)
+        url = (
+            f'http://api.indeed.com/ads/apisearch?publisher={self.publisher_id}&'
+            f'q={search}&'
+            'format=json&'
+            # 'l=austin%2C+tx&'
+            'sort=&'
+            'radius=&'
+            'st=&'
+            'jt=&'
+            f'start={start}&'
+            f'limit={results_per_page}&'
+            'fromage=&'
+            'filter=&'
+            'latlong=1&'
+            f'co={country}&'
+            'chnl=&'
+            f'userip={self.user_ip}&'
+            f'useragent={self.user_agent}&'
             'v=2'
+        )
         try:
             resp = requests.get(url)
             if resp.ok:
                 logging.info('Jobs have been collected')
-                print(resp.text)
+                job_data = resp.json()
+                last_result = job_data['end']
+                total_results = job_data['totalResults']
+                logging.info(f'Collecting the jobs: {search}; country: {country} [{start}-{start + results_per_page} / {total_results}]')
+                self.search_results += job_data['results']
+                if last_result == API_RESULTS_LIMIT + results_per_page:
+                    logging.warning(f"Reached {last_result} which is the API limit (bug?)")
+                    self.dump_results(country_dir, search)
+                elif last_result == total_results:
+                    logging.info(f"Done parsing {search}.")
+                    self.dump_results(country_dir, search)
+                else:
+                    self.search_jobs(search, country, start + results_per_page)
             else:
                 logging.warning('Jobs API has responded with unsuccessful status code')
                 logging.debug(resp.status_code)
@@ -173,7 +205,13 @@ logging.basicConfig(format='[%(asctime)s %(levelname)s]: %(message)s',
 search = options.search
 if not options.search:
     raise Exception('You have to give something to search. Use --help for more info.')
+elif Path(search).exists():
+    with open(Path(search), 'r') as queries_f:
+        search = list([q.strip() for q in queries_f if q.strip()])
+else:
+    search = [search]
 
 if options.indeed:
     indeed_crawler = IndeedCrawler(published_id=PUBLISHER_ID)
-    indeed_crawler.search_jobs(search)
+    for query in search:
+        indeed_crawler.search_jobs(query, country="de")
