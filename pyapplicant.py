@@ -45,8 +45,8 @@ class IndeedCrawler:
 
     # job key is an identifier of a job
     # you should use job API to search the jobs and Get Job API to get information about the specific job
-    def __init__(self, published_id):
-        self.publisher_id = published_id
+    def __init__(self, publisher_id):
+        self.publisher_id = publisher_id
         self.user_agent = 'Mozilla Firefox'
         self.user_ip = '127.0.0.1'
         self.job_types = ['fulltime', 'parttime', 'contract', 'internship', 'temporary']
@@ -215,11 +215,11 @@ if __name__ == "__main__":
     search = options.search
     if Path(search).exists():
         with open(Path(search), 'r') as queries_f:
-            search = list([q.strip() for q in queries_f if q.strip()])
+            search = list(q.strip() for q in queries_f if q.strip())
     else:
         search = [search]
 
     if options.indeed:
-        indeed_crawler = IndeedCrawler(published_id=PUBLISHER_ID)
+        indeed_crawler = IndeedCrawler(publisher_id=PUBLISHER_ID)
         for query in search:
             indeed_crawler.search_jobs(query, country="de")
