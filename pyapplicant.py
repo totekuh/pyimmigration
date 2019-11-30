@@ -64,7 +64,8 @@ class IndeedCrawler:
                     city='',
                     country='',
                     start=0,
-                    results_per_page=25):
+                    results_per_page=25,
+                    days_since_published=30):
         # https://opensource.indeedeng.io/api-documentation/docs/job-search/
         country_dir = DATASET_DIR / country
         if start == 0:
@@ -82,7 +83,7 @@ class IndeedCrawler:
             'jt=&'
             f'start={start}&'
             f'limit={results_per_page}&'
-            'fromage=&'
+            f'fromage={days_since_published}&'
             'filter=&'
             'latlong=1&'
             f'co={country}&'
@@ -100,7 +101,8 @@ class IndeedCrawler:
                 total_results = job_data['totalResults']
                 logging.info(
                             f'Searching jobs: {query}; '
-                            f'country: {country} '
+                            f'country: {country}; '
+                            f'days since published: {days_since_published} '
                             f'[{start}-{start + results_per_page} / '
                             f'{total_results}]')
                 self.search_results += job_data['results']
@@ -136,8 +138,11 @@ class IndeedCrawler:
             logging.error(e)
 
     def get_jobs(self, job_keys):
-        job_keys = ','.join(job_keys)
-        logging.info(f'Getting jobs with job_keys: {job_keys}')
+        if ',' in job_keys:
+            job_keys = ','.join(job_keys)
+            logging.info(f'Getting jobs with job_keys: {job_keys}')
+        else:
+            logging.info(f'Getting a job with job_key: {job_keys}')
         url = (
             f'http://api.indeed.com/ads/apigetjobs?publisher={self.publisher_id}&'
             f'jobkeys={job_keys}&'
@@ -157,17 +162,19 @@ class IndeedCrawler:
             logging.error(e)
 
     def dump_results(self, country_dir, query):
+        # save the results as is
         jobs_save_path = country_dir / f"{query.replace(' ', '_')}.json"
         with open(jobs_save_path, "w") as json_f:
             json.dump(self.search_results, json_f)
         logging.info(f"Saved {len(self.search_results)} jobs to {jobs_save_path}")
 
-        companies = [company['company'].replace('.', '').replace(',', '').strip() for company in
-                     self.search_results if company.strip()]
-        companies_save_path = country_dir / f'{query.replace(" ", "_")}_companies.txt'
-        with open(companies_save_path, 'w') as companies_f:
+        # now, save the companies and their URLs in a separate file
+        companies = [f"{job_as_json['company'].replace('.', '').replace(',', '').strip()}###{job_as_json['url']}"
+                     for job_as_json in self.search_results]
+        contacts_save_path = country_dir / f'{query.replace(" ", "_")}_contacts.txt'
+        with open(contacts_save_path, 'w') as companies_f:
             companies_f.write("\n".join(companies))
-        logging.info(f"Saved {len(self.companies)} companies to {companies_save_path}")
+        logging.info(f"Saved {len(self.companies)} companies and their URLs to {contacts_save_path}")
 
 
 # too complicated
