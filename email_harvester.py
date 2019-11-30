@@ -28,13 +28,11 @@ class Contact:
         self.url = line.split('###')[1]
 
     def find_email(self):
-        logging.info(f'Collecting emails from {self.company}')
         try:
             resp = requests.get(self.url)
             if resp.ok:
                 emails = scrape_emails(resp.text)
                 if emails:
-                    logging.info(f'{len(emails)} emails have been discovered')
                     return emails
             else:
                 logging.warning(f'{self.company} has returned unexpected status code: {resp.status_code}')
@@ -56,7 +54,8 @@ def parse_contact_files(dataset_dir=DATASET_DIR):
 
 contacts = parse_contact_files()
 emails = set()
-for contact in contacts:
+for i, contact in enumerate(contacts):
+    logging.info(f'Collecting emails from {contact.company} {i}/{len(contacts)}')
     harvest = contact.find_email()
     if harvest:
         for email in harvest:
