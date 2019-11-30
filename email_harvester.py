@@ -16,10 +16,10 @@ HARVEST_FILE = 'harvest.txt'
 EMAIL_BLACKLIST = ['noreply@indeed.com', '@sentry.indeed.com']
 
 
-def dump_results(emails):
-    with open(HARVEST_FILE, 'a') as f:
-        f.write('\n'.join(emails))
-    logging.info(f'{len(emails)} emails have been saved into {HARVEST_FILE}')
+def save_email(email, file=HARVEST_FILE):
+    with open(file, 'a') as f:
+        f.write(email)
+        f.write('\n')
 
 
 class Contact:
@@ -53,13 +53,14 @@ def parse_contact_files(dataset_dir=DATASET_DIR):
 
 
 contacts = parse_contact_files()
-emails = set()
+captured_emails = set()
 for i, contact in enumerate(contacts):
     logging.info(f'Collecting emails from {contact.company} {i}/{len(contacts)}')
     harvest = contact.find_email()
     if harvest:
         for email in harvest:
-            if not any(junk in email for junk in EMAIL_BLACKLIST):
-                emails.add(email)
-if emails:
-    dump_results(emails)
+            if not any(junk in email for junk in EMAIL_BLACKLIST) and email not in captured_emails:
+                captured_emails.add(email)
+                save_email(email)
+if captured_emails:
+    logging.info(f'{len(captured_emails)} emails have been saved into {HARVEST_FILE}')
