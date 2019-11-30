@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import logging
 import json
-from pathlib import Path
+import logging
 import random
 import string
+from pathlib import Path
 
 import requests
 
@@ -32,6 +32,12 @@ def get_arguments():
                         dest='search',
                         required=True,
                         help='Keywords to search within crawler web sites or API\'s.')
+    parser.add_argument('--country',
+                        dest='country',
+                        default='us',
+                        required=False,
+                        help='A value of a comma-separated list of countries to use while searching the jobs. '
+                             'Default is "us"')
     parser.add_argument('-l',
                         '--logging',
                         dest='logging',
@@ -53,12 +59,6 @@ class IndeedCrawler:
         self.job_types = ['fulltime', 'parttime', 'contract', 'internship', 'temporary']
         self.search_results = []
 
-    def dump_results(self, country_dir, query):
-        save_path = country_dir / f"{query.replace(' ', '_')}.json"
-        with open(save_path, "w") as json_f:
-            json.dump(self.search_results, json_f)
-        logging.info(f"Saved {len(self.search_results)} to {save_path}")
-
     def search_jobs(self,
                     query,
                     city='',
@@ -69,6 +69,7 @@ class IndeedCrawler:
         country_dir = DATASET_DIR / country
         if start == 0:
             self.search_results = []
+            self.companies = set()
             country_dir.mkdir(exist_ok=True)
         url = (
             f'http://api.indeed.com/ads/apisearch?publisher={self.publisher_id}&'
@@ -97,8 +98,21 @@ class IndeedCrawler:
                 job_data = resp.json()
                 last_result = job_data['end']
                 total_results = job_data['totalResults']
-                logging.info(f'Searching jobs: {query}; country: {country} [{start}-{start + results_per_page} / {total_results}]')
+                logging.info(
+                            f'Searching jobs: {query}; '
+                            f'country: {country} '
+                            f'[{start}-{start + results_per_page} / '
+                            f'{total_results}]')
                 self.search_results += job_data['results']
+
+                # extract all companies
+                for job in job_data['results']:
+                    try:
+                        normalized_company_name = job['company'].replace('.', '').replace(',', '')
+                        self.companies.add(normalized_company_name)
+                    except Exception as e:
+                        logging.error(e)
+                        continue
 
                 if last_result == API_RESULTS_LIMIT + results_per_page:
                     logging.warning(f"Reached {last_result} which is the API limit (bug?)")
@@ -134,13 +148,26 @@ class IndeedCrawler:
             resp = requests.get(url)
             if resp.ok:
                 logging.info('Job details have been collected')
-                print(resp.json())
+                return resp.json()
             else:
                 logging.warning('Get jobs API has responded with unsuccessful status code')
                 logging.debug(resp.status_code)
                 logging.debug(resp.text)
         except Exception as e:
             logging.error(e)
+
+    def dump_results(self, country_dir, query):
+        jobs_save_path = country_dir / f"{query.replace(' ', '_')}.json"
+        with open(jobs_save_path, "w") as json_f:
+            json.dump(self.search_results, json_f)
+        logging.info(f"Saved {len(self.search_results)} jobs to {jobs_save_path}")
+
+        companies = [company['company'].replace('.', '').replace(',', '').strip() for company in
+                     self.search_results if company.strip()]
+        companies_save_path = country_dir / f'{query.replace(" ", "_")}_companies.txt'
+        with open(companies_save_path, 'w') as companies_f:
+            companies_f.write("\n".join(companies))
+        logging.info(f"Saved {len(self.companies)} companies to {companies_save_path}")
 
 
 # too complicated
@@ -225,5 +252,10 @@ if __name__ == "__main__":
 
     if options.indeed:
         indeed_crawler = IndeedCrawler(publisher_id=PUBLISHER_ID)
+        if ',' not in options.country:
+            countries = [options.country]
+        else:
+            countries = options.country.split(',')
         for query in search:
-            indeed_crawler.search_jobs(query, country="us")
+            for country in countries:
+                indeed_crawler.search_jobs(query, country=country)
