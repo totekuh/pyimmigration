@@ -26,7 +26,6 @@ class Contact:
     def __init__(self, line):
         self.company = line.split('###')[0]
         self.url = line.split('###')[1]
-        self.emails = set()
 
     def find_email(self):
         logging.info(f'Collecting emails from {self.company}')
