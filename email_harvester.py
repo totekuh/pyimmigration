@@ -15,7 +15,7 @@ DATASET_DIR = 'dataset'
 HARVEST_FILE = 'harvest.txt'
 threads_limit = 50
 scraper_threads = []
-sleep_timer_in_seconds = 5
+sleep_timer_in_seconds = 1
 
 # we don't need it
 EMAIL_BLACKLIST = ['noreply@indeed.com', '@sentry.indeed.com']
@@ -43,7 +43,11 @@ class EmailScraper:
         return self.thread.isAlive()
 
     def find_email(self):
-        logging.info(f'Collecting emails from {self.company}')
+        global all_jobs_count
+        global scrapers
+        global running_scrapers
+        logging.info(f'Collecting emails from {self.company} '
+                     f'{len(running_scrapers)}/{len(scrapers)}/{all_jobs_count}')
         try:
             resp = requests.get(self.url)
             if resp.ok:
@@ -82,10 +86,6 @@ running_scrapers = []
 while len(scrapers) != 0:
     for scraper in scrapers.copy():
         if len(running_scrapers) >= threads_limit:
-            logging.info(f'Running jobs: {len([scraper.is_alive() for scraper in running_scrapers])}; '
-                         f'remaining jobs: {len(scrapers)}; '
-                         f'all jobs: {all_jobs_count}; '
-                         f'sleeping for {sleep_timer_in_seconds} seconds')
             sleep(sleep_timer_in_seconds)
         for running_scraper in running_scrapers.copy():
             if not running_scraper.is_alive():
@@ -98,10 +98,6 @@ while len(scrapers) != 0:
             logging.error(e)
 
 while any(scraper.is_alive() for scraper in running_scrapers):
-    logging.info(f'Running jobs: {len([scraper.is_alive() for scraper in running_scrapers])}; '
-                 f'remaining jobs: {len(scrapers)}; '
-                 f'all jobs: {all_jobs_count}; '
-                 f'sleeping for {sleep_timer_in_seconds} seconds')
     sleep(sleep_timer_in_seconds)
 
 logging.info(f'All scrapers have finished with {len(read_captures_emails())} emails')
