@@ -1,5 +1,7 @@
 #!/bin/bash
 
+mkdir harvest 2>/dev/null
+
 # https://www.worldatlas.com/aatlas/ctycodes.htm
 countries="it,ae,mv,mt,hu,nl,me,hr,cy"
 
