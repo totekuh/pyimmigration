@@ -94,7 +94,7 @@ while len(scrapers) != 0:
             logging.error(e)
 
 while any(scraper.is_alive() for scraper in running_scrapers):
-    logging.info(f'Running jobs: {len(running_scrapers)}; '
+    logging.info(f'Running jobs: {len([scraper.is_alive() for scraper in running_scrapers])}; '
                  f'remaining jobs: {len(scrapers)}; '
                  f'all jobs: {all_jobs_count}; '
                  f'sleeping for {sleep_timer_in_seconds} seconds')
