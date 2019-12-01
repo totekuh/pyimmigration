@@ -65,7 +65,7 @@ class IndeedCrawler:
                     country='',
                     start=0,
                     results_per_page=25,
-                    days_since_published=30):
+                    days_since_published=10):
         # https://opensource.indeedeng.io/api-documentation/docs/job-search/
         country_dir = DATASET_DIR / country
         if start == 0:
