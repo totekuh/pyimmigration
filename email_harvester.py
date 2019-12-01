@@ -82,10 +82,6 @@ running_scrapers = []
 while len(scrapers) != 0:
     for scraper in scrapers.copy():
         if len(running_scrapers) >= threads_limit:
-            logging.info(f'Running jobs: {len(running_scrapers)}; '
-                         f'remaining jobs: {len(scrapers)}; '
-                         f'all jobs: {all_jobs_count}; '
-                         f'sleeping for {sleep_timer_in_seconds} seconds')
             sleep(sleep_timer_in_seconds)
         for running_scraper in running_scrapers.copy():
             if not running_scraper.is_alive():
@@ -98,6 +94,10 @@ while len(scrapers) != 0:
             logging.error(e)
 
 while any(scraper.is_alive() for scraper in running_scrapers):
+    logging.info(f'Running jobs: {len(running_scrapers)}; '
+                 f'remaining jobs: {len(scrapers)}; '
+                 f'all jobs: {all_jobs_count}; '
+                 f'sleeping for {sleep_timer_in_seconds} seconds')
     sleep(sleep_timer_in_seconds)
 
 logging.info(f'All scrapers have finished with {len(read_captures_emails())} emails')
