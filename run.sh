@@ -1,9 +1,12 @@
 #!/bin/bash
 
-mkdir harvest 2>/dev/null
+rm -rf dataset
+rm -rf harvest
+
+mkdir harvest
 
 # https://www.worldatlas.com/aatlas/ctycodes.htm
-countries="it,ae,mv,mt,hu,nl,me,hr,cy"
+countries="us,es,de,at,fr,cz,it,ae,mv,mt,hu,nl,me,hr,cy"
 
 ./pyapplicant.py --indeed --search search.txt --country $countries &&
 ./email_harvester.py &&
