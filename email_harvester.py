@@ -44,10 +44,10 @@ class EmailScraper:
 
     def find_email(self):
         global all_jobs_count
-        global scrapers
+        global contacts
         global running_scrapers
         logging.info(f'Collecting emails from {self.company} '
-                     f'{len(running_scrapers)}/{len(scrapers)}/{all_jobs_count}')
+                     f'running: {len(running_scrapers)}; finished: {len(contacts)}; remaining: {all_jobs_count}')
         try:
             resp = requests.get(self.url)
             if resp.ok:
@@ -67,33 +67,34 @@ class EmailScraper:
             f.write('\n')
 
 
-def create_scrapers_threads(dataset_dir, output_file):
+def parse_contacts_files(dataset_dir):
     contact_files = glob.glob(f'{dataset_dir}/*/*.txt')
     contacts = set()
     for file in contact_files:
         with open(file, 'r') as contact_file:
             for line in contact_file.readlines():
                 contacts.add(line.strip())
-    scrapers = [EmailScraper(line, file=output_file) for line in contacts]
-    logging.info(f'{len(scrapers)} scrapers have been created for email harvesting')
-    return scrapers
+    logging.info(f'{len(contacts)} URLs have been parsed for email harvesting')
+    return contacts
 
 
-scrapers = create_scrapers_threads(dataset_dir=DATASET_DIR, output_file=HARVEST_FILE)
-all_jobs_count = len(scrapers)
+contacts = parse_contacts_files(dataset_dir=DATASET_DIR)
+
+all_jobs_count = len(contacts)
 running_scrapers = []
 
-while len(scrapers) != 0:
-    for scraper in scrapers.copy():
-        if len(running_scrapers) >= threads_limit:
-            sleep(sleep_timer_in_seconds)
-        for running_scraper in running_scrapers.copy():
-            if not running_scraper.is_alive():
-                running_scrapers.remove(running_scraper)
+while len(contacts) != 0:
+    if len(running_scrapers) >= threads_limit:
+        sleep(sleep_timer_in_seconds)
+    for running_scraper in running_scrapers.copy():
+        if not running_scraper.is_alive():
+            running_scrapers.remove(running_scraper)
+    for line in contacts.copy():
         try:
+            scraper = EmailScraper(line)
             scraper.start()
             running_scrapers.append(scraper)
-            scrapers.remove(scraper)
+            contacts.remove(line)
         except Exception as e:
             logging.error(e)
 
