@@ -13,6 +13,7 @@ logging.basicConfig(format='[%(asctime)s %(levelname)s]: %(message)s',
                     level='INFO')
 
 API_KEY_FILE = 'apikey.txt'
+DEFAULT_USED_EMAILS_FILE = 'used_emails.txt'
 with open(API_KEY_FILE, 'r') as f:
     sendgrid_api_key = f.read().strip()
 
@@ -43,6 +44,11 @@ def get_arguments():
                         dest='text',
                         required=True,
                         help='A mail text to use. You can pass a file name as an argument or an quotted text')
+    parser.add_argument('--used-emails',
+                        dest='used_emails',
+                        default=DEFAULT_USED_EMAILS_FILE,
+                        required=False,
+                        help='A txt file to write used emails.')
     options = parser.parse_args()
 
     return options
@@ -128,10 +134,11 @@ sender_email = options.sender
 subject = options.subject
 attached_file_path = options.file
 
-sender = EmailMassSender(sender_email,
-                         sendgrid_api_key,
-                         subject,
-                         text,
-                         attached_file_path)
+sender = EmailMassSender(sender_email=sender_email,
+                         sendgrid_api_key=sendgrid_api_key,
+                         subject=subject,
+                         text=text,
+                         attached_file_path=attached_file_path,
+                         used_emails_file=options.used_emails)
 for email in emails:
     sender.send_to(email)
