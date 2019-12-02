@@ -59,7 +59,6 @@ class EmailMassSender:
                  sender_email,
                  sendgrid_api_key,
                  subject,
-                 text,
                  attached_file_path=None,
                  smtp_host='smtp.sendgrid.net',
                  smtp_port=465,
@@ -69,11 +68,10 @@ class EmailMassSender:
         self.sender_email = sender_email
         self.sendgrid_api_key = sendgrid_api_key
         self.subject = subject
-        self.text = text
         self.attached_file_path = attached_file_path
         self.used_emails_file = used_emails_file
 
-    def send_to(self, recipient_address):
+    def send_to(self, recipient_address, text):
         if self.attached_file_path:
             part = MIMEBase('application', "octet-stream")
             part.set_payload(open(self.attached_file_path, "rb").read())
@@ -85,7 +83,7 @@ class EmailMassSender:
         msg['From'] = self.sender_email
         msg['To'] = recipient_address
         msg['Subject'] = self.subject
-        msg.attach(MIMEText(self.text, 'plain'))
+        msg.attach(MIMEText(text, 'plain'))
         if self.attached_file_path:
             msg.attach(part)
 
@@ -137,8 +135,10 @@ attached_file_path = options.file
 sender = EmailMassSender(sender_email=sender_email,
                          sendgrid_api_key=sendgrid_api_key,
                          subject=subject,
-                         text=text,
                          attached_file_path=attached_file_path,
                          used_emails_file=options.used_emails)
 for email in emails:
-    sender.send_to(email)
+    sender.send_to(email, text)
+
+# sending the last email to the sender in order to confirm the delivery
+sender.send_to(sender_email, f'Massive email delivery has finished with {emails} emails')
