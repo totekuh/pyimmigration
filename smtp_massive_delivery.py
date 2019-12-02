@@ -17,6 +17,8 @@ DEFAULT_USED_EMAILS_FILE = 'used_emails.txt'
 DEFAULT_SUBJECT = 'Job Application'
 DEFAULT_ATTACH_FILENAME = 'cv.pdf'
 DEFAULT_MAIL_TEXT_FILENAME = 'text.txt'
+DEFAULT_SMTP_HOST = 'smtp.sendgrid.net'
+DEFAULT_SMTP_PORT = 465
 
 with open(API_KEY_FILE, 'r') as f:
     sendgrid_api_key = f.read().strip()
@@ -57,6 +59,16 @@ def get_arguments():
                         default=DEFAULT_USED_EMAILS_FILE,
                         required=False,
                         help='A txt file to write used emails.')
+    parser.add_argument('--smtp-host',
+                        dest='smtp_host',
+                        default=DEFAULT_SMTP_HOST,
+                        required=False,
+                        help='An SMTP host to use. Default is ' + DEFAULT_SMTP_HOST)
+    parser.add_argument('--smtp-port',
+                        dest='smtp_port',
+                        default=DEFAULT_SMTP_PORT,
+                        required=False,
+                        help='An SMTP port to use. Default is ' + str(DEFAULT_SMTP_PORT))
     options = parser.parse_args()
 
     return options
@@ -68,8 +80,8 @@ class EmailMassSender:
                  sendgrid_api_key,
                  subject,
                  attached_file_path=None,
-                 smtp_host='smtp.sendgrid.net',
-                 smtp_port=465,
+                 smtp_host=DEFAULT_SMTP_HOST,
+                 smtp_port=DEFAULT_SMTP_PORT,
                  used_emails_file='used_emails.txt'):
         self.smtp_host = smtp_host
         self.smtp_port = smtp_port
@@ -140,6 +152,8 @@ sender_email = options.sender
 subject = options.subject
 
 sender = EmailMassSender(sender_email=sender_email,
+                         smtp_host=options.smtp_host,
+                         smtp_port=int(options.smtp_port),
                          sendgrid_api_key=sendgrid_api_key,
                          subject=subject,
                          attached_file_path=options.file,
@@ -148,4 +162,4 @@ for email in emails:
     sender.send_to(email, text)
 
 # sending the last email to the sender in order to confirm the delivery
-sender.send_to(sender_email, f'Massive email delivery has finished with {emails} emails')
+sender.send_to(sender_email, f'Massive email delivery has finished with {len(emails)} emails.')

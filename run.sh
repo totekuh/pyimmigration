@@ -18,4 +18,4 @@ mv harvest.txt $emails &&
 
 echo 'You can start a massive email delivery by running the following command:"'
 
-echo "./massive_delivery.py --target "$emails" --file "$attach" --sender "$sender_address" --subject "$subject" --text "$openning_letter" --used-emails 'used-"$emails
+echo "./smtp_massive_delivery.py --target "$emails" --file "$attach" --sender "$sender_address" --subject "$subject" --text "$openning_letter" --used-emails 'used-"$emails
