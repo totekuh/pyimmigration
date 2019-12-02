@@ -1,17 +1,16 @@
 #!/usr/bin/env/python3
-from pathlib import Path
-
+import logging
 import os
 import smtplib
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import logging
+from pathlib import Path
+
 logging.basicConfig(format='[%(asctime)s %(levelname)s]: %(message)s',
                     datefmt='%m/%d/%Y %I:%M:%S %p',
                     level='INFO')
-
 
 API_KEY_FILE = 'apikey.txt'
 with open(API_KEY_FILE, 'r') as f:
@@ -57,7 +56,8 @@ class EmailMassSender:
                  text,
                  attached_file_path=None,
                  smtp_host='smtp.sendgrid.net',
-                 smtp_port=465):
+                 smtp_port=465,
+                 used_emails_file='used_emails.txt'):
         self.smtp_host = smtp_host
         self.smtp_port = smtp_port
         self.sender_email = sender_email
@@ -65,6 +65,7 @@ class EmailMassSender:
         self.subject = subject
         self.text = text
         self.attached_file_path = attached_file_path
+        self.used_emails_file = used_emails_filea
 
     def send_to(self, recipient_address):
         if self.attached_file_path:
@@ -83,15 +84,31 @@ class EmailMassSender:
             msg.attach(part)
 
         text_msg = msg.as_string()
-        try:
-            logging.info(f'Sending email to {recipient_address}')
-            server = smtplib.SMTP_SSL(self.smtp_host, self.smtp_port)
-            server.ehlo()
-            server.login('apikey', self.sendgrid_api_key)
-            server.sendmail(self.sender_email, recipient_address, text_msg)
-            server.close()
-        except Exception as e:
-            logging.error(e)
+        if recipient_address in self.read_used_emails():
+            logging.warning(f'Skipping {recipient_address} as it was used before')
+        else:
+            try:
+                logging.info(f'Sending email to {recipient_address}')
+                server = smtplib.SMTP_SSL(self.smtp_host, self.smtp_port)
+                server.ehlo()
+                server.login('apikey', self.sendgrid_api_key)
+                server.sendmail(self.sender_email, recipient_address, text_msg)
+                server.close()
+                self.store_used_email(recipient_address)
+            except Exception as e:
+                logging.error(e)
+
+    def store_used_email(self, email_address):
+        with open(self.used_emails_file, 'a') as used_f:
+            used_f.write(email_address)
+            used_f.write('\n')
+
+    def read_used_emails(self):
+        if Path(self.used_emails_file).exists():
+            with open(self.used_emails_file) as used_f:
+                return [e.strip() for e in used_f.readlines()]
+        else:
+            return []
 
 
 options = get_arguments()

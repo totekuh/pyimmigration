@@ -14,7 +14,7 @@ DATASET_DIR = Path("dataset")
 DATASET_DIR.mkdir(exist_ok=True)
 
 with open(PUBLISHER_ID_FILE, 'r', encoding='utf-8') as f:
-    PUBLISHER_ID = f.read()
+    PUBLISHER_ID = f.read().strip()
 
 
 def get_arguments():
