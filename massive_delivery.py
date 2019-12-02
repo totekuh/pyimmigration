@@ -14,6 +14,10 @@ logging.basicConfig(format='[%(asctime)s %(levelname)s]: %(message)s',
 
 API_KEY_FILE = 'apikey.txt'
 DEFAULT_USED_EMAILS_FILE = 'used_emails.txt'
+DEFAULT_SUBJECT = 'Job Application'
+DEFAULT_ATTACH_FILENAME = 'cv.pdf'
+DEFAULT_MAIL_TEXT_FILENAME = 'text.txt'
+
 with open(API_KEY_FILE, 'r') as f:
     sendgrid_api_key = f.read().strip()
 
@@ -30,20 +34,24 @@ def get_arguments():
                              'make a massive delivery.')
     parser.add_argument('--file',
                         dest='file',
+                        default=DEFAULT_ATTACH_FILENAME,
                         required=False,
-                        help='Attach a file to your email.')
+                        help='Attach a file to your email. Default is ' + DEFAULT_ATTACH_FILENAME)
     parser.add_argument('--sender',
                         dest='sender',
                         required=True,
                         help='A name to use as a sender name')
     parser.add_argument('--subject',
                         dest='subject',
-                        required=True,
-                        help='A mail subject to use')
+                        default=DEFAULT_SUBJECT,
+                        required=False,
+                        help='A mail subject to use. Default is ' + DEFAULT_SUBJECT)
     parser.add_argument('--text',
                         dest='text',
-                        required=True,
-                        help='A mail text to use. You can pass a file name as an argument or an quotted text')
+                        default=DEFAULT_MAIL_TEXT_FILENAME,
+                        required=False,
+                        help='The mail text. This argument might be used as a string or as a file name. Default is '
+                             + DEFAULT_ATTACH_FILENAME)
     parser.add_argument('--used-emails',
                         dest='used_emails',
                         default=DEFAULT_USED_EMAILS_FILE,
@@ -130,12 +138,11 @@ else:
 
 sender_email = options.sender
 subject = options.subject
-attached_file_path = options.file
 
 sender = EmailMassSender(sender_email=sender_email,
                          sendgrid_api_key=sendgrid_api_key,
                          subject=subject,
-                         attached_file_path=attached_file_path,
+                         attached_file_path=options.file,
                          used_emails_file=options.used_emails)
 for email in emails:
     sender.send_to(email, text)
