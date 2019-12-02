@@ -1,15 +1,21 @@
 #!/bin/bash
 
 rm -rf dataset
-rm -rf harvest
-
 
 # https://www.worldatlas.com/aatlas/ctycodes.htm
-countries="us,es,de,at,fr,cz,it,ae,mv,mt,hu,nl,me,hr,cy"
+countries="ca"
+sender_address='ninja@virtualsquad'
+subject='Job Application'
+attach='cv.pdf'
+openning_letter='text.txt'
+
 
 ./pyapplicant.py --indeed --search search.txt --country $countries &&
 ./email_harvester.py &&
 
-mkdir harvest
-mv harvest.txt ./harvest/$countries.txt &&
-echo 'OK' 
+emails=$countries'-emails.txt'
+mv harvest.txt $emails &&
+
+echo 'You can start a massive delivery by running the following command:"'
+
+echo "./massive_delivery.py --target "$emails" --file "$attach" --sender "$sender_address" --subject "$subject" --text "$openning_letter" --used-emails 'used-"$emails

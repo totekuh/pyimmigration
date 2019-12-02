@@ -7,11 +7,13 @@ from pathlib import Path
 
 import requests
 
+DEFAULT_DAYS_SINCE_PUBLISHED = 5
 DEFAULT_LOGGING_LEVEL = 'INFO'
 PUBLISHER_ID_FILE = 'publisher_id.txt'
 API_RESULTS_LIMIT = 1000
 DATASET_DIR = Path("dataset")
 DATASET_DIR.mkdir(exist_ok=True)
+JOB_TYPES = ['fulltime', 'parttime', 'contract', 'internship', 'temporary', 'all']
 
 with open(PUBLISHER_ID_FILE, 'r', encoding='utf-8') as f:
     PUBLISHER_ID = f.read().strip()
@@ -38,11 +40,23 @@ def get_arguments():
                         required=False,
                         help='A value of a comma-separated list of countries to use while searching the jobs. '
                              'Default is "us"')
+    parser.add_argument('--days',
+                        dest='days',
+                        default=DEFAULT_DAYS_SINCE_PUBLISHED,
+                        required=False,
+                        help='Days since published. Default is ' + str(DEFAULT_DAYS_SINCE_PUBLISHED))
+    parser.add_argument('--job-type',
+                        dest='job_type',
+                        required=False,
+                        default='fulltime',
+                        choices=JOB_TYPES,
+                        help='Search by a specific job type. Use "all" to search for the all job types. '
+                             'Default is fulltime')
     parser.add_argument('-l',
                         '--logging',
                         dest='logging',
                         default=DEFAULT_LOGGING_LEVEL,
-                        choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"],
+                        choices=["ERROR", "WARNING", "INFO", "DEBUG"],
                         required=False,
                         help='Logging level. Default is ' + DEFAULT_LOGGING_LEVEL)
     return parser.parse_args()
@@ -65,6 +79,7 @@ class IndeedCrawler:
                     country='',
                     start=0,
                     results_per_page=25,
+                    job_type='fulltime',
                     days_since_published=10):
         # https://opensource.indeedeng.io/api-documentation/docs/job-search/
         country_dir = DATASET_DIR / country
@@ -80,7 +95,7 @@ class IndeedCrawler:
             'sort=&'
             'radius=&'
             'st=&'
-            'jt=&'
+            f'jt={job_type}&'
             f'start={start}&'
             f'limit={results_per_page}&'
             f'fromage={days_since_published}&'
@@ -101,6 +116,7 @@ class IndeedCrawler:
                 total_results = job_data['totalResults']
                 logging.info(
                             f'Searching jobs: {query}; '
+                            f'job type: {job_type}; '
                             f'country: {country}; '
                             f'days since published: {days_since_published} '
                             f'[{start}-{start + results_per_page} / '
@@ -257,6 +273,10 @@ if __name__ == "__main__":
     else:
         search = [search]
 
+    job_type = options.job_type
+    if job_type == 'all':
+        job_type = [t for t in JOB_TYPES if t != 'all']
+
     if options.indeed:
         indeed_crawler = IndeedCrawler(publisher_id=PUBLISHER_ID)
         if ',' not in options.country:
@@ -265,4 +285,9 @@ if __name__ == "__main__":
             countries = options.country.split(',')
         for query in search:
             for country in countries:
-                indeed_crawler.search_jobs(query, country=country)
+                for t in job_type:
+                    indeed_crawler.search_jobs(query,
+                                               country=country,
+                                               days_since_published=int(options.days),
+                                               job_type=t
+                                               )
