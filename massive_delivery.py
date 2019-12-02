@@ -65,7 +65,7 @@ class EmailMassSender:
         self.subject = subject
         self.text = text
         self.attached_file_path = attached_file_path
-        self.used_emails_file = used_emails_filea
+        self.used_emails_file = used_emails_file
 
     def send_to(self, recipient_address):
         if self.attached_file_path:
