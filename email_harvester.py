@@ -58,7 +58,7 @@ def parse_contacts_files(dataset_dir):
         with open(file, 'r') as contact_file:
             for line in contact_file.readlines():
                 contacts.add(line.strip())
-    logging.info(f'{len(contacts)} URLs have been parsed for email harvesting')
+    logging.info(f'{len(contacts)} URLs have been passed for email harvesting')
     return contacts
 
 
