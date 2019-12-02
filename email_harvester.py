@@ -2,8 +2,6 @@
 import glob
 import logging
 import os
-from threading import Thread
-from time import sleep
 
 import requests
 from email_scraper import scrape_emails
@@ -12,9 +10,8 @@ logging.basicConfig(format='[%(asctime)s %(levelname)s]: %(message)s',
                     datefmt='%m/%d/%Y %I:%M:%S %p',
                     level='INFO')
 DATASET_DIR = 'dataset'
+CONTACTS_FILE_PATTERN = '*_contacts.txt'
 HARVEST_FILE = 'harvest.txt'
-threads_limit = 50
-scraper_threads = []
 sleep_timer_in_seconds = 10
 
 # we don't need it
@@ -34,7 +31,6 @@ class EmailScraper:
         self.output_file = file
 
     def find_email(self, company, url):
-
         try:
             resp = requests.get(url)
             if resp.ok:
@@ -56,7 +52,7 @@ class EmailScraper:
 
 
 def parse_contacts_files(dataset_dir):
-    contact_files = glob.glob(f'{dataset_dir}/*/*.txt')
+    contact_files = glob.glob(f'{dataset_dir}/*/{CONTACTS_FILE_PATTERN}')
     contacts = set()
     for file in contact_files:
         with open(file, 'r') as contact_file:

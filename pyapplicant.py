@@ -141,7 +141,12 @@ class IndeedCrawler:
                     self.dump_results(country_dir, query)
 
                 else:
-                    self.search_jobs(query, city, country, start + results_per_page)
+                    self.search_jobs(query,
+                                     city=city,
+                                     country=country,
+                                     start=start + results_per_page,
+                                     job_type=job_type,
+                                     days_since_published=days_since_published)
 
             else:
                 logging.warning('Search jobs API has responded with unsuccessful status code')
