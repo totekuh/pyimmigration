@@ -16,6 +16,6 @@ openning_letter='text.txt'
 emails=$countries'-emails.txt'
 mv harvest.txt $emails &&
 
-echo 'You can start a massive delivery by running the following command:"'
+echo 'You can start a massive email delivery by running the following command:"'
 
 echo "./massive_delivery.py --target "$emails" --file "$attach" --sender "$sender_address" --subject "$subject" --text "$openning_letter" --used-emails 'used-"$emails
