@@ -21,7 +21,7 @@ days_since_published=10
 emails=$countries'-emails.txt'
 mv harvest.txt $emails &&
 
-echo 'You can start a massive email delivery by running the following command:"'
+echo 'You can start a massive email delivery by running the following command:'
 
 # mailing properties here
 sender_address='ninja@virtualsquad'
@@ -29,4 +29,4 @@ subject='Job Application'
 attach='cv.pdf'
 openning_letter='text.txt'
 
-echo "./massive_delivery.py --target "$emails" --file "$attach" --sender "$sender_address" --subject "$subject" --text "$openning_letter" --used-emails 'used-"$emails
+echo "./massive_delivery.py --target "$emails" --file "$attach" --sender "$sender_address" --subject "$subject" --text "$openning_letter" --used-emails used-"$emails
