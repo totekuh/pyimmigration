@@ -15,4 +15,4 @@
 
 </br></br> <h2>STEP 3 - MASSIVE EMAIL DELIVERY</h2>
 </br>Use massive_delivery.py script to perform a massive email delivery to the scraped email addresses. You have to give an smtp relay to use.
-
+<img src='https://i.imgur.com/jLC0m2H.png'>
