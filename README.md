@@ -11,6 +11,7 @@
 </br></br> <h2>STEP 2 - EMAIL HARVESTING</h2>
 </br>Use email_harvester.py script to iterate through the collected dataset and attempt to scrape emails from a number of stored web-sites. This is the slowest step, as the script visits every web-site and every link in order to discover emails.
 <img src='https://i.imgur.com/4ReutHf.jpg'>
+<img src='https://i.imgur.com/bD4k26U.png'>
 
 </br></br> <h2>STEP 3 - MASSIVE EMAIL DELIVERY</h2>
 </br>Use massive_delivery.py script to perform a massive email delivery to the scraped email addresses. You have to give an smtp relay to use.
