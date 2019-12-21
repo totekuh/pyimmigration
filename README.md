@@ -2,6 +2,7 @@
 </br>Python scripts to discover and collect a dataset of jobs applications. 
 
 </br></br> <h2>STEP 1 - Finding job applications</h2>
+</br><h3>A valid Indeed API-key is required to use the script.</h3>
 </br>Use pyapplicant.py script to iterate through Indeed.com REST API and collect a dataset with job applications.
 </br>The script has a few options to help you filter your results. 
 </br>Use --help argument to see all of them.
@@ -12,4 +13,5 @@
 <img src='https://i.imgur.com/4ReutHf.jpg'>
 
 </br></br> <h2>STEP 3 - MASSIVE EMAIL DELIVERY</h2>
-</br>Use massive_delivery.py script to 
+</br>Use massive_delivery.py script to perform a massive email delivery to the scraped email addresses. You have to give an smtp relay to use.
+
