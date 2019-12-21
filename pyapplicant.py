@@ -281,6 +281,8 @@ if __name__ == "__main__":
     job_type = options.job_type
     if job_type == 'all':
         job_type = [t for t in JOB_TYPES if t != 'all']
+    else:
+        job_type = [job_type]
 
     if options.indeed:
         indeed_crawler = IndeedCrawler(publisher_id=PUBLISHER_ID)
