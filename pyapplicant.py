@@ -38,7 +38,7 @@ def get_arguments():
                         dest='country',
                         default='us',
                         required=False,
-                        help='A value of a comma-separated list of countries to use while searching the jobs. '
+                        help='A value or a comma-separated list of countries to use while searching the jobs. '
                              'Default is "us"')
     parser.add_argument('--days',
                         dest='days',
