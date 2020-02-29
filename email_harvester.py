@@ -2,6 +2,7 @@
 import glob
 import logging
 import os
+from threading import Thread
 
 import requests
 from email_scraper import scrape_emails
@@ -10,12 +11,37 @@ logging.basicConfig(format='[%(asctime)s %(levelname)s]: %(message)s',
                     datefmt='%m/%d/%Y %I:%M:%S %p',
                     level='INFO')
 DATASET_DIR = 'dataset'
+DEFAULT_THREADS_LIMIT = 10
 CONTACTS_FILE_PATTERN = '*_contacts.txt'
 HARVEST_FILE = 'harvest.txt'
 sleep_timer_in_seconds = 10
 
 # we don't need it
 EMAIL_BLACKLIST = ['noreply@indeed.com', '@sentry.indeed.com']
+
+
+def get_arguments():
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument('--dataset-dir',
+                        dest='dataset_dir',
+                        required=False,
+                        help='Specify a dataset directory from the pyapplicat script to collect the emails. '
+                        f'Default is {DATASET_DIR}')
+    parser.add_argument('--threads',
+                        dest='threads',
+                        required=False,
+                        help='Specify a number of threads for the email harvesting. '
+                        f'Default is {DEFAULT_THREADS_LIMIT}')
+    options = parser.parse_args()
+
+    options.threads = int(options.threads)
+
+    return options
+
+
+options = get_arguments()
 
 
 def read_captures_emails(harvest_file=HARVEST_FILE):
@@ -62,17 +88,31 @@ def parse_contacts_files(dataset_dir):
     return contacts
 
 
-contacts = parse_contacts_files(dataset_dir=DATASET_DIR)
+def run_email_harvesting(contacts, threads_limit):
+    scraper = EmailScraper()
 
-all_jobs_count = len(contacts)
-finished_jobs_count = 0
+    scraper_threads = []
 
-scraper = EmailScraper()
-for line in contacts:
-    company = line.split('###')[0]
-    url = line.split('###')[1]
-    logging.info(f'Collecting emails from {company} [{finished_jobs_count}/{all_jobs_count}]')
-    scraper.find_email(company, url)
-    finished_jobs_count += 1
+    for i, line in enumerate(contacts):
+        company = line.split('###')[0]
+        url = line.split('###')[1]
+
+        while len(scraper_threads) >= threads_limit:
+            for thread in scraper_threads.copy():
+                if not thread.is_alive():
+                    scraper_threads.remove(thread)
+
+        scraper_thread = Thread(target=scraper.find_email, args=(company, url))
+        scraper_threads.append(scraper_thread)
+        logging.info(f'Collecting emails from {company} [{i + 1}/{len(contacts)}]')
+        scraper_thread.start()
+
+    while any(thread.is_alive() for thread in scraper_threads):
+        pass
+
+
+contacts = parse_contacts_files(dataset_dir=options.dataset_dir)
+
+run_email_harvesting(contacts, options.threads)
 
 logging.info(f'All jobs have finished with {len(read_captures_emails())} emails')
