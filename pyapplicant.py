@@ -4,6 +4,7 @@ import logging
 import random
 import string
 from pathlib import Path
+from os import linesep
 
 import requests
 
@@ -117,12 +118,12 @@ class IndeedCrawler:
                 last_result = job_data['end']
                 total_results = job_data['totalResults']
                 logging.info(
-                            f'Searching jobs: {query}; '
-                            f'job type: {job_type}; '
-                            f'country: {country}; '
-                            f'days since published: {days_since_published} '
-                            f'[{start}-{start + results_per_page} / '
-                            f'{total_results}]')
+                    f'Searching jobs: {query}; '
+                    f'job type: {job_type}; '
+                    f'country: {country}; '
+                    f'days since published: {days_since_published} '
+                    f'[{start}-{start + results_per_page} / '
+                    f'{total_results}]')
                 self.search_results += job_data['results']
 
                 # extract all companies
@@ -187,7 +188,7 @@ class IndeedCrawler:
     def dump_results(self, country_dir, query):
         # save the results as is
         jobs_save_path = country_dir / f"{query.replace(' ', '_')}.json"
-        with open(jobs_save_path, "w") as json_f:
+        with open(jobs_save_path, "a") as json_f:
             json.dump(self.search_results, json_f)
         logging.info(f"Saved {len(self.search_results)} jobs to {jobs_save_path}")
 
@@ -195,8 +196,8 @@ class IndeedCrawler:
         companies = [f"{job_as_json['company'].replace('.', '').replace(',', '').strip()}###{job_as_json['url']}"
                      for job_as_json in self.search_results]
         contacts_save_path = country_dir / f'{query.replace(" ", "_")}_contacts.txt'
-        with open(contacts_save_path, 'w') as companies_f:
-            companies_f.write("\n".join(companies))
+        with open(contacts_save_path, 'a') as companies_f:
+            companies_f.write(linesep.join(companies))
         logging.info(f"Saved {len(self.companies)} companies and their URLs to {contacts_save_path}")
 
 
@@ -222,11 +223,11 @@ class LinkedInCrawler:
                                         response_type='code',
                                         scope='r_liteprofile%20r_emailaddress%20w_member_social'):
         authorization_code_url = 'https://www.linkedin.com/oauth/v2/authorization?' \
-            f'response_type={response_type}&' \
-            f'client_id={client_id}&' \
-            f'redirect_uri={redirect_url}' \
-            f'&state={state}&' \
-            f'scope={scope}'
+                                 f'response_type={response_type}&' \
+                                 f'client_id={client_id}&' \
+                                 f'redirect_uri={redirect_url}' \
+                                 f'&state={state}&' \
+                                 f'scope={scope}'
         try:
             print(authorization_code_url)
             resp = requests.get(authorization_code_url)
@@ -248,10 +249,10 @@ class LinkedInCrawler:
                                   grant_type='authorization_code'):
         access_token_url = 'https://www.linkedin.com/oauth/v2/accessToken'
         post_data = f'grant_type={grant_type}&' \
-            f'code={authorization_code}&' \
-            f'client_id={client_id}&' \
-            f'client_secret={client_secret}&' \
-            f'redirect_uri={redirect_url}'
+                    f'code={authorization_code}&' \
+                    f'client_id={client_id}&' \
+                    f'client_secret={client_secret}&' \
+                    f'redirect_uri={redirect_url}'
         try:
             resp = requests.post(access_token_url, data=post_data, headers={
                 'Content-Type': 'application/x-www-form-urlencoded'
