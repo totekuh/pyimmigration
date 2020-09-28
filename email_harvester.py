@@ -26,17 +26,18 @@ def get_arguments():
     parser = ArgumentParser()
     parser.add_argument('--dataset-dir',
                         dest='dataset_dir',
+                        default=DATASET_DIR,
                         required=False,
                         help='Specify a dataset directory from the pyapplicat script to collect the emails. '
-                        f'Default is {DATASET_DIR}')
+                        f"Default is {DATASET_DIR}")
     parser.add_argument('--threads',
                         dest='threads',
                         required=False,
+                        default=DEFAULT_THREADS_LIMIT,
+                        type=int,
                         help='Specify a number of threads for the email harvesting. '
                         f'Default is {DEFAULT_THREADS_LIMIT}')
     options = parser.parse_args()
-
-    options.threads = int(options.threads)
 
     return options
 

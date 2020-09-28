@@ -26,14 +26,14 @@ def get_arguments():
     parser.add_argument('--indeed',
                         action='store_true',
                         required=False,
-                        help='Invoke the Indeed web crawler. '
-                             'The crawler will use stored publisher ID to search the '
+                        help='Start the Indeed web crawler. '
+                             'The crawler will use the publisher ID to search various'
                              'jobs for you. '
-                             'The job keywords to search for must be specified with --search flag.')
+                             'The job keywords must be specified with the --search flag.')
     parser.add_argument('--search',
                         dest='search',
                         required=True,
-                        help='Keywords to search within crawler web sites or API\'s.')
+                        help='The keywords to use while searching')
     parser.add_argument('--country',
                         dest='country',
                         default='us',
@@ -43,29 +43,31 @@ def get_arguments():
     parser.add_argument('--days',
                         dest='days',
                         default=DEFAULT_DAYS_SINCE_PUBLISHED,
+                        type=int,
                         required=False,
-                        help='Days since published. Default is ' + str(DEFAULT_DAYS_SINCE_PUBLISHED))
+                        help=f"Days since published. Default is '{DEFAULT_DAYS_SINCE_PUBLISHED}'")
     parser.add_argument('--job-type',
                         dest='job_type',
                         required=False,
                         default='fulltime',
                         choices=JOB_TYPES,
                         help='Search by a specific job type. Use "all" to search for the all job types. '
-                             'Default is fulltime')
+                             "Default is 'fulltime'")
     parser.add_argument('-l',
                         '--logging',
                         dest='logging',
                         default=DEFAULT_LOGGING_LEVEL,
                         choices=["ERROR", "WARNING", "INFO", "DEBUG"],
                         required=False,
-                        help='Logging level. Default is ' + DEFAULT_LOGGING_LEVEL)
+                        help=f"Logging level. Default is {DEFAULT_LOGGING_LEVEL}")
     return parser.parse_args()
 
 
 class IndeedCrawler:
 
-    # job key is an identifier of a job
-    # you should use job API to search the jobs and Get Job API to get information about the specific job
+    # The job key is an identifier of a job
+    # you should use the job API to search for the jobs and
+    # the 'Get Job API' to get information about the specific job
     def __init__(self, publisher_id):
         self.publisher_id = publisher_id
         self.user_agent = 'Mozilla Firefox'
@@ -295,6 +297,6 @@ if __name__ == "__main__":
                 for t in job_type:
                     indeed_crawler.search_jobs(query,
                                                country=country,
-                                               days_since_published=int(options.days),
+                                               days_since_published=options.days,
                                                job_type=t
                                                )
