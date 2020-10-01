@@ -3,6 +3,7 @@ import json
 import logging
 from os import linesep
 from pathlib import Path
+
 import requests
 from bs4 import BeautifulSoup as bs
 from requests_html import HTMLSession
@@ -74,67 +75,69 @@ class Job:
         self.company = company
         self.url = url
 
+
 class StepstoneCrawler:
     def __init__(self):
         self.jobs = []
+        self.session = HTMLSession()
 
     def extract_jobs(self, html):
-        job_data = []
+        extracted_jobs = []
         soup = bs(html, 'html.parser')
         for tag in soup.find_all('article'):
-            print(tag)
-        return job_data
+            href = tag.find('a').attrs['href']
+            company_name = tag.find('div', attrs={'data-at': "job-item-company-name"}).text
 
-    def has_next_page(self, html):
-        return False
+            job = Job(company=company_name, url=f"https://www.stepstone.de{href}")
+            extracted_jobs.append(job)
+        return extracted_jobs
+
+    def get_next_page_url(self, html):
+        soup = bs(html, 'html.parser')
+
+        next_page_button = soup.find('a', attrs={'title': "Nächste"})
+        if hasattr(next_page_button, 'attrs') and 'href' in next_page_button.attrs:
+            href = next_page_button.attrs['href']
+            return href
 
     def search_jobs(self,
-                    query,
+                    url,
                     start=0):
         country_dir = DATASET_DIR / country
         if start == 0:
             country_dir.mkdir(exist_ok=True)
-        url = (
-            'https://www.stepstone.de/5/ergebnisliste.html?'
-            # 'stf=freeText&'
-            # 'ns=1&'
-            # 'companyid=0&'
-            'sourceofthesearchfield=companyresultlistpage%3Ageneral&'
-            'qs=[]&'
-            'cityid=0&'
-            f'ke={query}&'
-            'ra=30&'
-            'suid=b25e356b-f554-4be2-8810-786fe7d89a36&'
-            f'of={start}'
-        )
 
-        logging.debug(f"Searching for '{query}' on the stepstone.de domain")
+        logging.info(f"Searching for '{query}' on the stepstone.de domain; "
+                     f"jobs found in total: [{len(self.jobs)}]")
         try:
-            with HTMLSession() as session:
-                resp = session.get(url)
-                html = resp.html
+            resp = self.session.get(url)
+            html = resp.html
 
-                html.render()
-                if resp.ok:
-                    html = resp.text
-                    jobs = self.extract_jobs(html)
-                    if jobs:
-                        for job in jobs:
-                            self.jobs.append(job)
-                        if self.has_next_page(html):
-                            self.search_jobs(query=query,
-                                             start=start + 25)
-                    else:
-                        if self.jobs:
-                            logging.info(f"Done parsing {query}; {len(self.jobs)} jobs found")
-                        else:
-                            logging.warning('Failed to find any jobs. '
-                                            'You should check the DEBUG log for the page content.')
-                            logging.debug(html)
-
+            html.render()
+            if resp.ok:
+                html = resp.text
+                jobs = self.extract_jobs(html)
+                if jobs:
+                    for job in jobs:
+                        self.jobs.append(job)
+                    next_page_url = self.get_next_page_url(html)
+                    if next_page_url:
+                        self.search_jobs(url=next_page_url)
+                    elif self.jobs:
+                        logging.info(f"Done parsing {query}; {len(self.jobs)} jobs found")
+                        self.dump_results(country_dir, query)
                 else:
-                    logging.debug(resp.status_code)
-                    logging.debug(resp.text)
+                    if self.jobs:
+                        logging.info(f"Done parsing {query}; {len(self.jobs)} jobs found")
+                        self.dump_results(country_dir, query)
+                    else:
+                        logging.warning('Failed to find any jobs. '
+                                        'You should check the DEBUG log for the page content.')
+                        logging.debug(html)
+
+            else:
+                logging.debug(resp.status_code)
+                logging.debug(resp.text)
         except KeyboardInterrupt:
             logging.warning("Jobs searching has been interrupted")
             self.dump_results(country_dir, query)
@@ -143,7 +146,7 @@ class StepstoneCrawler:
 
     def dump_results(self, country_dir, search_query):
         # name###url
-        companies = [f"{job['company'].replace('.', '').replace(',', '').strip()}###{job['url']}"
+        companies = [f"{job.company.replace('.', '').replace(',', '').strip()}###{job.url}"
                      for job in self.jobs]
         contacts_file_name = country_dir / f'{search_query.replace(" ", "_")}_contacts.txt'
         with open(contacts_file_name, 'a') as companies_f:
@@ -327,4 +330,17 @@ if __name__ == "__main__":
         else:
             stepstone_scraper = StepstoneCrawler()
             for query in search:
-                stepstone_scraper.search_jobs(query)
+                stepstone_scraper.search_jobs(
+                    url=(
+                        'https://www.stepstone.de/5/ergebnisliste.html?'
+                        'stf=freeText&'
+                        'ns=1&'
+                        'qs=%5B%7B%22id%22%3A%22300000115%22%2C%22description%22%3A%22Deutschland%22%2C%22type%22%3A%22geocity%22%7D%5D&'
+                        'companyID=0&'
+                        'cityID=300000115&'
+                        'sourceOfTheSearchField=homepagemex%3Ageneral&searchOrigin=Homepage_top-search&'
+                        f'ke={query}&'
+                        f'ws=Deutschland&'
+                        f'ra=100'
+                    )
+                )
