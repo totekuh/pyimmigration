@@ -1,1 +1,3 @@
 email-scraper
+beautifulsoup4
+requests-html

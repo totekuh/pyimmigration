@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 import json
 import logging
-import random
-import string
-from pathlib import Path
 from os import linesep
-
+from pathlib import Path
 import requests
+from bs4 import BeautifulSoup as bs
+from requests_html import HTMLSession
 
 DEFAULT_DAYS_SINCE_PUBLISHED = 5
 DEFAULT_LOGGING_LEVEL = 'INFO'
@@ -31,6 +30,12 @@ def get_arguments():
                              'The crawler will use the publisher ID to search various'
                              'jobs for you. '
                              'The job keywords must be specified with the --search flag.')
+    parser.add_argument('--stepstone',
+                        action='store_true',
+                        required=False,
+                        help='Start the Stepstone web crawler. '
+                             'Pretty much the same thing as the indeed web crawler '
+                             'but scrapes stepstone.de instead')
     parser.add_argument('--search',
                         dest='search',
                         required=True,
@@ -62,6 +67,88 @@ def get_arguments():
                         required=False,
                         help=f"Logging level. Default is {DEFAULT_LOGGING_LEVEL}")
     return parser.parse_args()
+
+
+class Job:
+    def __init__(self, company, url):
+        self.company = company
+        self.url = url
+
+class StepstoneCrawler:
+    def __init__(self):
+        self.jobs = []
+
+    def extract_jobs(self, html):
+        job_data = []
+        soup = bs(html, 'html.parser')
+        for tag in soup.find_all('article'):
+            print(tag)
+        return job_data
+
+    def has_next_page(self, html):
+        return False
+
+    def search_jobs(self,
+                    query,
+                    start=0):
+        country_dir = DATASET_DIR / country
+        if start == 0:
+            country_dir.mkdir(exist_ok=True)
+        url = (
+            'https://www.stepstone.de/5/ergebnisliste.html?'
+            # 'stf=freeText&'
+            # 'ns=1&'
+            # 'companyid=0&'
+            'sourceofthesearchfield=companyresultlistpage%3Ageneral&'
+            'qs=[]&'
+            'cityid=0&'
+            f'ke={query}&'
+            'ra=30&'
+            'suid=b25e356b-f554-4be2-8810-786fe7d89a36&'
+            f'of={start}'
+        )
+
+        logging.debug(f"Searching for '{query}' on the stepstone.de domain")
+        try:
+            with HTMLSession() as session:
+                resp = session.get(url)
+                html = resp.html
+
+                html.render()
+                if resp.ok:
+                    html = resp.text
+                    jobs = self.extract_jobs(html)
+                    if jobs:
+                        for job in jobs:
+                            self.jobs.append(job)
+                        if self.has_next_page(html):
+                            self.search_jobs(query=query,
+                                             start=start + 25)
+                    else:
+                        if self.jobs:
+                            logging.info(f"Done parsing {query}; {len(self.jobs)} jobs found")
+                        else:
+                            logging.warning('Failed to find any jobs. '
+                                            'You should check the DEBUG log for the page content.')
+                            logging.debug(html)
+
+                else:
+                    logging.debug(resp.status_code)
+                    logging.debug(resp.text)
+        except KeyboardInterrupt:
+            logging.warning("Jobs searching has been interrupted")
+            self.dump_results(country_dir, query)
+        except Exception as e:
+            logging.error(e)
+
+    def dump_results(self, country_dir, search_query):
+        # name###url
+        companies = [f"{job['company'].replace('.', '').replace(',', '').strip()}###{job['url']}"
+                     for job in self.jobs]
+        contacts_file_name = country_dir / f'{search_query.replace(" ", "_")}_contacts.txt'
+        with open(contacts_file_name, 'a') as companies_f:
+            companies_f.write(linesep.join(companies))
+        logging.info(f"Saved {len(companies)} companies and their URLs to {contacts_file_name}")
 
 
 class IndeedCrawler:
@@ -156,7 +243,7 @@ class IndeedCrawler:
                 logging.debug(resp.status_code)
                 logging.debug(resp.text)
         except KeyboardInterrupt:
-            logging.warning("Search interrupted. Dumping current results.")
+            logging.warning("Job searching has been interrupted")
             self.dump_results(country_dir, query)
         except Exception as e:
             logging.error(e)
@@ -201,73 +288,6 @@ class IndeedCrawler:
         logging.info(f"Saved {len(self.companies)} companies and their URLs to {contacts_save_path}")
 
 
-# too complicated
-class LinkedInCrawler:
-    @staticmethod
-    def get_random_string(length=10):
-        # Generate a random string of fixed length
-        letters = string.ascii_lowercase
-        return ''.join(random.choice(letters) for i in range(length))
-
-    def __init__(self):
-        self.client_id = '123'
-        self.client_secret = '123'
-        self.redirect_url = 'http://localhost:8080'
-        self.state = self.get_random_string()
-
-    # https://docs.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow?context=linkedin/context
-    def get_linkedin_authorization_code(self,
-                                        client_id,
-                                        redirect_url,
-                                        state,
-                                        response_type='code',
-                                        scope='r_liteprofile%20r_emailaddress%20w_member_social'):
-        authorization_code_url = 'https://www.linkedin.com/oauth/v2/authorization?' \
-                                 f'response_type={response_type}&' \
-                                 f'client_id={client_id}&' \
-                                 f'redirect_uri={redirect_url}' \
-                                 f'&state={state}&' \
-                                 f'scope={scope}'
-        try:
-            print(authorization_code_url)
-            resp = requests.get(authorization_code_url)
-            if resp.status_code == 200:
-                logging.info('Authorization code received')
-                print(resp.text)
-                return resp.text
-            else:
-                logging.warning('Failed to obtain authorization code')
-                print(resp.status_code, resp.json())
-        except Exception as e:
-            logging.error(e)
-
-    def get_linkedin_access_token(self,
-                                  client_id,
-                                  client_secret,
-                                  redirect_url,
-                                  authorization_code,
-                                  grant_type='authorization_code'):
-        access_token_url = 'https://www.linkedin.com/oauth/v2/accessToken'
-        post_data = f'grant_type={grant_type}&' \
-                    f'code={authorization_code}&' \
-                    f'client_id={client_id}&' \
-                    f'client_secret={client_secret}&' \
-                    f'redirect_uri={redirect_url}'
-        try:
-            resp = requests.post(access_token_url, data=post_data, headers={
-                'Content-Type': 'application/x-www-form-urlencoded'
-            })
-            if resp.status_code == 200:
-                logging.info('Access token received')
-                resp_body = resp.json()
-                return resp_body
-            else:
-                logging.warning('Failed to obtain access token')
-                logging.debug(resp.status_code, resp.json())
-        except Exception as e:
-            logging.error(e)
-
-
 if __name__ == "__main__":
     options = get_arguments()
     logging.basicConfig(format='[%(asctime)s %(levelname)s]: %(message)s',
@@ -299,5 +319,12 @@ if __name__ == "__main__":
                     indeed_crawler.search_jobs(query,
                                                country=country,
                                                days_since_published=options.days,
-                                               job_type=t
-                                               )
+                                               job_type=t)
+    elif options.stepstone:
+        country = options.country
+        if country and country != 'de':
+            raise Exception(f"'de' is the only valid country for the Stepstone crawler")
+        else:
+            stepstone_scraper = StepstoneCrawler()
+            for query in search:
+                stepstone_scraper.search_jobs(query)
