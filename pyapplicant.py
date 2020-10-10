@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import json
+from threading import Thread
 import logging
 from os import linesep
 from pathlib import Path
-
+import json
 import requests
 from bs4 import BeautifulSoup as bs
-from requests_html import HTMLSession
+from requests_html import HTMLSession, HTML
 
 DEFAULT_DAYS_SINCE_PUBLISHED = 5
 DEFAULT_LOGGING_LEVEL = 'INFO'
@@ -60,6 +61,11 @@ def get_arguments():
                         choices=JOB_TYPES,
                         help='Search by a specific job type. Use "all" to search for the all job types. '
                              "Default is 'fulltime'")
+    parser.add_argument('--limit',
+                        dest='limit',
+                        required=False,
+                        type=int,
+                        help='Limit results to the given number.')
     parser.add_argument('-l',
                         '--logging',
                         dest='logging',
@@ -77,19 +83,83 @@ class Job:
 
 
 class StepstoneCrawler:
-    def __init__(self):
+    def __init__(self, limit=None):
         self.jobs = []
         self.session = HTMLSession()
+        self.limit = limit
+
+    def get_company_information(self, job_link, extracted_jobs):
+        try:
+            logging.info(f"Extracting information about the company from '{job_link}'")
+            resp = requests.get(job_link, headers={
+                'User-Agent': 'Your Mom'
+            })
+            company_document = HTML(html=resp.text)
+
+            # get the company name
+            company_name = ''
+            for tag in company_document.find('div'):
+                for attr in tag.attrs:
+                    if attr == 'data-replyone':
+                        data = json.loads(tag.attrs[attr])
+                        company_name = data['companyName']
+            if not company_name:
+                company_name = 'NOT_AVAILABLE'
+
+            # get the company URL
+            company_url = ''
+            for tag in company_document.find('a'):
+                if 'href' in tag.attrs and \
+                        'target' in tag.attrs and \
+                        'rel' in tag.attrs:
+                    if tag.full_text.strip() and \
+                            not tag.full_text.strip() == 'Geben Sie uns Feedback' and \
+                            '.de' in tag.full_text:
+                        if not tag.full_text.startswith('https'):
+                            company_url = f'https://{tag.full_text.strip()}'
+                        else:
+                            company_url = tag.full_text.strip()
+            if not company_url:
+                logging.warning(f"Failed to extract the company URL from {company_url}. ")
+            else:
+                extracted_jobs.append(Job(company=company_name, url=company_url))
+
+        except Exception as e:
+            logging.error(f"Failed to extract the company information from {job_link} - {e}")
 
     def extract_jobs(self, html):
         extracted_jobs = []
-        soup = bs(html, 'html.parser')
-        for tag in soup.find_all('article'):
-            href = tag.find('a').attrs['href']
-            company_name = tag.find('div', attrs={'data-at': "job-item-company-name"}).text
+        document = HTML(html=html)
 
-            job = Job(company=company_name, url=f"https://www.stepstone.de{href}")
-            extracted_jobs.append(job)
+        # for each vacancy we have to visit the job URL and extract the company URL and the company name
+        base_url = 'https://www.stepstone.de'
+        extracted_links = []
+        for link in document.links:
+            if not link.startswith('http'):
+                absolute_link = f"{base_url}{link}"
+            elif link.startswith(base_url):
+                absolute_link = link
+            else:
+                continue
+            if 'stellenangebote' in absolute_link:
+                extracted_links.append(absolute_link)
+        logging.info(f"{len(extracted_links)} links have been extracted")
+
+        threads_limit = 40
+        scraper_threads = []
+        for link in extracted_links:
+            while len(scraper_threads) > threads_limit:
+                for thread in scraper_threads.copy():
+                    if not thread.is_alive():
+                        scraper_threads.remove(thread)
+
+            thread = Thread(target=self.get_company_information, args=(link, extracted_jobs))
+            scraper_threads.append(thread)
+            thread.start()
+
+        while any(thread.is_alive() for thread in scraper_threads):
+            pass
+
         return extracted_jobs
 
     def get_next_page_url(self, html):
@@ -111,15 +181,18 @@ class StepstoneCrawler:
                      f"jobs found in total: [{len(self.jobs)}]")
         try:
             resp = self.session.get(url)
-            html = resp.html
-
-            html.render()
+            resp.html.render()
             if resp.ok:
                 html = resp.text
                 jobs = self.extract_jobs(html)
                 if jobs:
                     for job in jobs:
                         self.jobs.append(job)
+
+                    if len(self.jobs) > self.limit:
+                        logging.info('Stopping the scraper as the jobs limit has been exceeded')
+                        self.dump_results(country_dir, query)
+                        return
                     next_page_url = self.get_next_page_url(html)
                     if next_page_url:
                         self.search_jobs(url=next_page_url)
@@ -328,8 +401,9 @@ if __name__ == "__main__":
         if country and country != 'de':
             raise Exception(f"'de' is the only valid country for the Stepstone crawler")
         else:
-            stepstone_scraper = StepstoneCrawler()
+            stepstone_scraper = StepstoneCrawler(limit=options.limit)
             for query in search:
+                stepstone_scraper.jobs = []
                 stepstone_scraper.search_jobs(
                     url=(
                         'https://www.stepstone.de/5/ergebnisliste.html?'
