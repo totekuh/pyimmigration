@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import os
 from threading import Thread
 import logging
 from os import linesep
@@ -116,6 +117,12 @@ class StepstoneCrawler:
                             not tag.full_text.strip() == 'Geben Sie uns Feedback' and \
                             '.de' in tag.full_text:
                         if not tag.full_text.startswith('https'):
+                            if '@' in tag.full_text:
+                                logging.info(f"Capturing the email of '{company_name}' - '{tag.full_text}'")
+                                with open('harvest.txt', 'a', encoding='utf-8') as file:
+                                    file.write(tag.full_text)
+                                    file.write(os.filesep)
+                                return
                             company_url = f'https://{tag.full_text.strip()}'
                         else:
                             company_url = tag.full_text.strip()

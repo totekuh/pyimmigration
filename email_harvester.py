@@ -3,6 +3,8 @@ import glob
 import logging
 import os
 from threading import Thread
+import urllib3
+urllib3.disable_warnings()
 
 import requests
 from email_scraper import scrape_emails
@@ -28,15 +30,15 @@ def get_arguments():
                         dest='dataset_dir',
                         default=DATASET_DIR,
                         required=False,
-                        help='Specify a dataset directory from the pyapplicat script to collect the emails. '
-                        f"Default is {DATASET_DIR}")
+                        help='Specify a dataset directory from the pyapplicant script to collect the emails. '
+                             f"Default is {DATASET_DIR}")
     parser.add_argument('--threads',
                         dest='threads',
                         required=False,
                         default=DEFAULT_THREADS_LIMIT,
                         type=int,
                         help='Specify a number of threads for the email harvesting. '
-                        f'Default is {DEFAULT_THREADS_LIMIT}')
+                             f'Default is {DEFAULT_THREADS_LIMIT}')
     options = parser.parse_args()
 
     return options
@@ -58,8 +60,14 @@ class EmailScraper:
         self.output_file = file
 
     def find_email(self, company, url):
+        if not url.startswith('https://'):
+            url = f"https://{url}"
         try:
-            resp = requests.get(url)
+            resp = requests.get(url, headers={
+                'User-Agent': "Did you play Crusader Kings 3?"
+            },
+                                verify=False,
+                                timeout=10)
             if resp.ok:
                 emails = scrape_emails(resp.text)
                 if emails:
@@ -100,8 +108,8 @@ def run_email_harvesting(contacts, threads_limit):
 
         while len(scraper_threads) >= threads_limit:
             for thread in scraper_threads.copy():
-                if not thread.is_alive():
-                    scraper_threads.remove(thread)
+                thread.join(15)
+                scraper_threads.remove(thread)
 
         scraper_thread = Thread(target=scraper.find_email, args=(company, url))
         scraper_threads.append(scraper_thread)
