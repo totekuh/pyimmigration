@@ -90,7 +90,7 @@ class StepstoneCrawler:
 
     def get_company_information(self, job_link, extracted_jobs):
         try:
-            logging.info(f"Extracting information about the company from '{job_link}'")
+            logging.debug(f"Extracting information about the company from '{job_link}'")
             resp = requests.get(job_link, headers={
                 'User-Agent': 'Your Mom'
             })
@@ -120,8 +120,9 @@ class StepstoneCrawler:
                         else:
                             company_url = tag.full_text.strip()
             if not company_url:
-                logging.warning(f"Failed to extract the company URL from {company_url}. ")
+                logging.warning(f"Failed to extract the company URL from '{company_name}'")
             else:
+                logging.info(f"Storing '{company_name}' - '{company_url}' for the email harvesting")
                 extracted_jobs.append(Job(company=company_name, url=company_url))
 
         except Exception as e:
@@ -145,7 +146,7 @@ class StepstoneCrawler:
                 extracted_links.append(absolute_link)
         logging.info(f"{len(extracted_links)} links have been extracted")
 
-        threads_limit = 40
+        threads_limit = 50
         scraper_threads = []
         for link in extracted_links:
             while len(scraper_threads) > threads_limit:
