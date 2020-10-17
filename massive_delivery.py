@@ -97,6 +97,9 @@ class EmailMassSender:
         self.attached_file_path = attached_file_path
         self.used_emails_file = used_emails_file
 
+        self.emails_sent = set()
+        self.emails_skipped = set()
+
     def send_to(self, recipient_address, text, write_log=True):
         if self.attached_file_path:
             part = MIMEBase('application', "octet-stream")
@@ -116,6 +119,7 @@ class EmailMassSender:
         text_msg = msg.as_string()
         if recipient_address in self.read_used_emails():
             logging.warning(f'Skipping {recipient_address} as it was already used')
+            self.emails_skipped.add(recipient_address)
         else:
             try:
                 logging.info(f'Sending an email to {recipient_address}')
@@ -130,6 +134,7 @@ class EmailMassSender:
                 logging.error(e)
 
     def store_used_email(self, email_address):
+        self.emails_sent.add(email_address)
         with open(self.used_emails_file, 'a') as used_f:
             used_f.write(email_address)
             used_f.write(os.linesep)
@@ -169,5 +174,13 @@ sender = EmailMassSender(sender_email=sender_email,
 for email in emails:
     sender.send_to(email, text)
 
+confirmation_text = f'Massive email delivery has finished with {len(sender.emails_sent)} emails. '
+f'{os.linesep}'
+f'{len(sender.emails_skipped)} have been skipped; '
+f'{os.linesep}'
+f'Emails sent in total: {len(sender.read_used_emails())}; '
+f'{os.linesep}'
+f'{os.linesep.join(sender.emails_sent)}'
+
 # send an email to the sender in order to confirm the delivery
-sender.send_to(sender_email, f'Massive email delivery has finished with {len(emails)} emails.', write_log=False)
+sender.send_to(sender_email, confirmation_text, write_log=False)
