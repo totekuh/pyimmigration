@@ -97,7 +97,7 @@ class EmailMassSender:
         self.attached_file_path = attached_file_path
         self.used_emails_file = used_emails_file
 
-    def send_to(self, recipient_address, text):
+    def send_to(self, recipient_address, text, write_log=True):
         if self.attached_file_path:
             part = MIMEBase('application', "octet-stream")
             part.set_payload(open(self.attached_file_path, "rb").read())
@@ -124,7 +124,8 @@ class EmailMassSender:
                 server.login(self.smtp_login, self.smtp_password)
                 server.sendmail(self.sender_email, recipient_address, text_msg)
                 server.close()
-                self.store_used_email(recipient_address)
+                if write_log:
+                    self.store_used_email(recipient_address)
             except Exception as e:
                 logging.error(e)
 
@@ -169,4 +170,4 @@ for email in emails:
     sender.send_to(email, text)
 
 # send an email to the sender in order to confirm the delivery
-sender.send_to(sender_email, f'Massive email delivery has finished with {len(emails)} emails.')
+sender.send_to(sender_email, f'Massive email delivery has finished with {len(emails)} emails.', write_log=False)
