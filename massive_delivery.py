@@ -174,13 +174,13 @@ sender = EmailMassSender(sender_email=sender_email,
 for email in emails:
     sender.send_to(email, text)
 
-confirmation_text = f'Massive email delivery has finished with {len(sender.emails_sent)} emails. '
-f'{os.linesep}'
-f'{len(sender.emails_skipped)} have been skipped; '
-f'{os.linesep}'
-f'Emails sent in total: {len(sender.read_used_emails())}; '
-f'{os.linesep}'
-f'{os.linesep.join(sender.emails_sent)}'
+confirmation_text = f'Massive email delivery has finished with {len(sender.emails_sent)} emails. ' \
+                    f'{os.linesep} ' \
+                    f'{len(sender.emails_skipped)} have been skipped; ' \
+                    f'{os.linesep}' \
+                    f'Emails sent in total: {len(sender.read_used_emails())}; ' \
+                    f'{os.linesep}' \
+                    f'{os.linesep.join(sender.emails_sent)}'
 
 # send an email to the sender in order to confirm the delivery
 sender.send_to(sender_email, confirmation_text, write_log=False)
