@@ -4,6 +4,7 @@ import logging
 import os
 from threading import Thread
 import urllib3
+
 urllib3.disable_warnings()
 
 import requests
@@ -15,6 +16,7 @@ logging.basicConfig(format='[%(asctime)s %(levelname)s]: %(message)s',
 DATASET_DIR = 'dataset'
 DEFAULT_THREADS_LIMIT = 10
 CONTACTS_FILE_PATTERN = '*_contacts.txt'
+DEFAULT_FORMAT = 'name###url'
 HARVEST_FILE = 'harvest.txt'
 sleep_timer_in_seconds = 10
 
@@ -32,6 +34,15 @@ def get_arguments():
                         required=False,
                         help='Specify a dataset directory from the pyapplicant script to collect the emails. '
                              f"Default is {DATASET_DIR}")
+    parser.add_argument('--format',
+                        dest='format',
+                        default=DEFAULT_FORMAT,
+                        required=False,
+                        help='Specify the link format for the email harvester. '
+                             'It can be an URL or a company name with an URL. '
+                             '1st example: https://company-site.com ;'
+                             '2nd example: companyName###https://company-site.com ;'
+                             f'Default is {DEFAULT_FORMAT}')
     parser.add_argument('--threads',
                         dest='threads',
                         required=False,
@@ -97,18 +108,30 @@ def parse_contacts_files(dataset_dir):
     return contacts
 
 
-def run_email_harvesting(contacts, threads_limit):
+def run_email_harvesting(contacts, threads_limit, format):
     scraper = EmailScraper()
 
     scraper_threads = []
 
     for i, line in enumerate(contacts):
-        company = line.split('###')[0]
-        url = line.split('###')[1]
+        if '###' in format:
+            chunks = line.split('###')
+            if len(chunks) != 2:
+                logging.error(f"Skipping the line '{line}' as it has invalid format")
+                continue
+
+            company = chunks[0]
+            url = chunks[1]
+        elif line.startswith('http'):
+            company = 'NOT_AVAILABLE'
+            url = line
+        else:
+            logging.warning(f'Unsupported line format: {line}, skipping it')
+            continue
 
         while len(scraper_threads) >= threads_limit:
             for thread in scraper_threads.copy():
-                thread.join(15)
+                thread.join(timeout=10)
                 scraper_threads.remove(thread)
 
         scraper_thread = Thread(target=scraper.find_email, args=(company, url))
@@ -116,12 +139,12 @@ def run_email_harvesting(contacts, threads_limit):
         logging.info(f'Collecting emails from {company} [{i + 1}/{len(contacts)}]')
         scraper_thread.start()
 
-    while any(thread.is_alive() for thread in scraper_threads):
-        pass
+    for thread in scraper_threads:
+        thread.join(30)
 
 
 contacts = parse_contacts_files(dataset_dir=options.dataset_dir)
 
-run_email_harvesting(contacts, options.threads)
+run_email_harvesting(contacts=contacts, threads_limit=options.threads, format=options.format)
 
 logging.info(f'All jobs have finished with {len(read_captures_emails())} emails')
