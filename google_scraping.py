@@ -70,7 +70,8 @@ def scrape(keyword, output_file):
                     logging.info(f"Harvesting a new link - {fixed_href}")
                     new_links.add(fixed_href)
         if new_links:
-            logging.info(f'{len(new_links)} links have been extracted from the page')
+            logging.info(f'{len(new_links)} links have been extracted from the page; '
+                         f'{len(links)} found in total')
             with open(output_file, 'a', encoding='utf-8') as f:
                 for link in new_links:
                     f.write(link.strip())
