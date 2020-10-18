@@ -30,19 +30,13 @@ def get_arguments():
     parser = ArgumentParser()
     parser.add_argument('--dataset-dir',
                         dest='dataset_dir',
-                        default=DATASET_DIR,
                         required=False,
-                        help='Specify a dataset directory from the pyapplicant script to collect the emails. '
-                             f"Default is {DATASET_DIR}")
-    parser.add_argument('--format',
-                        dest='format',
-                        default=DEFAULT_FORMAT,
+                        help='Specify a dataset directory from the pyapplicant script to collect the emails. ')
+    parser.add_argument('--dataset-file',
+                        dest='dataset_file',
                         required=False,
-                        help='Specify the link format for the email harvester. '
-                             'It can be an URL or a company name with an URL. '
-                             '1st example: https://company-site.com ;'
-                             '2nd example: companyName###https://company-site.com ;'
-                             f'Default is {DEFAULT_FORMAT}')
+                        help='Specify a dataset file for the email harvesting. '
+                             'The script uses the --dataset-dir by default. ')
     parser.add_argument('--threads',
                         dest='threads',
                         required=False,
@@ -51,6 +45,15 @@ def get_arguments():
                         help='Specify a number of threads for the email harvesting. '
                              f'Default is {DEFAULT_THREADS_LIMIT}')
     options = parser.parse_args()
+
+    if options.dataset_dir and options.dataset_file:
+        parser.error("You can't use both --dataset-dir and --dataset-file "
+                     "arguments in the same time.")
+
+    if not options.dataset_dir and not options.dataset_file:
+        logging.info("Neither --dataset-dir nor --dataset-file have been provided. "
+                     f"Falling back to the default --dataset-dir {DATASET_DIR} argument.")
+        options.dataset_dir = DATASET_DIR
 
     return options
 
@@ -97,7 +100,16 @@ class EmailScraper:
             f.write('\n')
 
 
-def parse_contacts_files(dataset_dir):
+def parse_contacts_dataset_file(dataset_file):
+    contacts = set()
+    with open(dataset_file, 'r') as f:
+        for line in f.readlines():
+            contacts.add(line.strip())
+    logging.info(f'{len(contacts)} URLs have been passed for email harvesting')
+    return contacts
+
+
+def parse_contacts_dataset_dir(dataset_dir):
     contact_files = glob.glob(f'{dataset_dir}/*/{CONTACTS_FILE_PATTERN}')
     contacts = set()
     for file in contact_files:
@@ -108,13 +120,13 @@ def parse_contacts_files(dataset_dir):
     return contacts
 
 
-def run_email_harvesting(contacts, threads_limit, format):
+def run_email_harvesting(contacts, threads_limit):
     scraper = EmailScraper()
 
     scraper_threads = []
 
     for i, line in enumerate(contacts):
-        if '###' in format:
+        if '###' in line:
             chunks = line.split('###')
             if len(chunks) != 2:
                 logging.error(f"Skipping the line '{line}' as it has invalid format")
@@ -123,7 +135,7 @@ def run_email_harvesting(contacts, threads_limit, format):
             company = chunks[0]
             url = chunks[1]
         elif line.startswith('http'):
-            company = 'NOT_AVAILABLE'
+            company = line
             url = line
         else:
             logging.warning(f'Unsupported line format: {line}, skipping it')
@@ -143,8 +155,11 @@ def run_email_harvesting(contacts, threads_limit, format):
         thread.join(30)
 
 
-contacts = parse_contacts_files(dataset_dir=options.dataset_dir)
+if options.dataset_dir:
+    contacts = parse_contacts_dataset_dir(dataset_dir=options.dataset_dir)
+else:
+    contacts = parse_contacts_dataset_file(dataset_file=options.dataset_file)
 
-run_email_harvesting(contacts=contacts, threads_limit=options.threads, format=options.format)
+run_email_harvesting(contacts=contacts, threads_limit=options.threads)
 
 logging.info(f'All jobs have finished with {len(read_captures_emails())} emails')
