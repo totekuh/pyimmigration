@@ -25,6 +25,12 @@ def get_arguments():
                         help='Specify your search query for Google. '
                              'It can be a string or a file name with a new-line separated list of keywords. '
                              f'Default file name is {DEFAULT_SEARCH_FILE}')
+    parser.add_argument('--limit',
+                        dest='limit',
+                        required=False,
+                        type=int,
+                        help='Limit results from Google to the specified number. '
+                             'By default there is no limit.')
     parser.add_argument('--output',
                         dest='output',
                         required=False,
@@ -40,7 +46,7 @@ def get_arguments():
 options = get_arguments()
 
 
-def scrape(keyword, output_file):
+def scrape(keyword, output_file, limit):
     # Google Search URL
     url = "https://google.co.in/search"
 
@@ -67,8 +73,16 @@ def scrape(keyword, output_file):
                 if href.startswith('/url?q=') \
                         and 'accounts.google.com' not in href:
                     fixed_href = href.lstrip('/url?q=')
-                    logging.info(f"Harvesting a new link - {fixed_href}")
-                    new_links.add(fixed_href)
+
+                    chunks = fixed_href.split('/')
+
+                    if len(chunks) >2:
+                        fixed_url = f"{chunks[0]}//{chunks[2]}"
+                    else:
+                        fixed_url = fixed_href
+
+                    logging.info(f"Harvesting a new link - {fixed_url}")
+                    new_links.add(fixed_url)
         if new_links:
             logging.info(f'{len(new_links)} links have been extracted from the page; '
                          f'{len(links)} found in total')
@@ -84,6 +98,9 @@ def scrape(keyword, output_file):
         links.add(link)
 
     while True:
+        if limit and len(links) > limit:
+            logging.info("Stopping the scraper as the limit has been exceeded")
+            break
         next_page_url = get_next_page_url(html)
         if next_page_url:
             logging.info("Processing a new page with links")
@@ -108,4 +125,4 @@ else:
     search = [options.search]
 
 for query in search:
-    scrape(keyword=query, output_file=options.output)
+    scrape(keyword=query, output_file=options.output, limit=options.limit)

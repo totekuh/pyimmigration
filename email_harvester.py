@@ -2,13 +2,15 @@
 import glob
 import logging
 import os
-from threading import Thread
+from threading import Thread, Lock
 import urllib3
 
 urllib3.disable_warnings()
 
 import requests
 from email_scraper import scrape_emails
+
+global_lock = Lock()
 
 logging.basicConfig(format='[%(asctime)s %(levelname)s]: %(message)s',
                     datefmt='%m/%d/%Y %I:%M:%S %p',
@@ -95,9 +97,14 @@ class EmailScraper:
             logging.error(e)
 
     def save_email(self, email):
+        while global_lock.locked():
+            pass
+        global_lock.acquire()
+
         with open(self.output_file, 'a') as f:
-            f.write(email)
-            f.write('\n')
+            logging.info(f'Storing a new email: {email}')
+            f.write(f'{email}{os.linesep}')
+        global_lock.release()
 
 
 def parse_contacts_dataset_file(dataset_file):
@@ -143,16 +150,16 @@ def run_email_harvesting(contacts, threads_limit):
 
         while len(scraper_threads) >= threads_limit:
             for thread in scraper_threads.copy():
-                thread.join(timeout=10)
-                scraper_threads.remove(thread)
+                if not thread.is_alive():
+                    scraper_threads.remove(thread)
 
         scraper_thread = Thread(target=scraper.find_email, args=(company, url))
         scraper_threads.append(scraper_thread)
         logging.info(f'Collecting emails from {company} [{i + 1}/{len(contacts)}]')
         scraper_thread.start()
 
-    for thread in scraper_threads:
-        thread.join(30)
+    while any(thread.is_alive() for thread in scraper_threads):
+        pass
 
 
 if options.dataset_dir:
