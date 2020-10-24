@@ -65,7 +65,7 @@ def search(update, context):
                 update.message.reply_text('I can break rules, too. Goodbye.')
                 return
 
-            logging.info(f"Starting the search for the {job} title [{i + 1}/{len(job)}]")
+            logging.info(f"Starting the search for the {job} title [{i + 1}/{len(jobs)}]")
 
             os.system('rm -rf harvest.txt')
             os.system('rm -rf links.txt')
