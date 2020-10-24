@@ -86,7 +86,11 @@ class Job:
 class StepstoneCrawler:
     def __init__(self, limit=None):
         self.jobs = []
-        self.session = HTMLSession()
+        try:
+            self.session = HTMLSession()
+        except Exception as e:
+            logging.error(f'Failed to run the Chrome browser: {e}')
+            exit(1)
         self.limit = limit
 
     def get_company_information(self, job_link, extracted_jobs):
