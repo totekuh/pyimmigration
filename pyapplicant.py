@@ -128,6 +128,12 @@ class StepstoneCrawler:
             if not company_url:
                 logging.warning(f"Failed to extract the company URL from '{company_name}'")
             else:
+
+                chunks = company_url.split('/')
+
+                if len(chunks) > 2:
+                    company_url = f"{chunks[0]}//{chunks[2]}"
+
                 logging.info(f"Storing '{company_name}' - '{company_url}' for the email harvesting")
                 extracted_jobs.append(Job(company=company_name, url=company_url))
 
