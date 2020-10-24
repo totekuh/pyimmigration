@@ -80,7 +80,7 @@ def search(update, context):
                       f'--search "{job}" --limit 50 ')
 
             update.message.reply_text(f"[1/2] Starting the email-harvester for \"{job}\"")
-            os.system(f'timeout 1h {PYTHON_INTERPRETER} email_harvester.py '
+            os.system(f'timeout 30m {PYTHON_INTERPRETER} email_harvester.py '
                       f'--threads 250')
 
             update.message.reply_text(f"[2/2] Starting the email-harvester for \"{job}\"")
