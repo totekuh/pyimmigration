@@ -50,10 +50,10 @@ def start(update, context):
 def search(update, context):
     raw_jobs = context.args
     if not raw_jobs:
-        update.effective_user.reply_text("You didn't provide a job to search for. "
+        update.message.reply_text("You didn't provide a job to search for. "
                                          "Please pass a job title or a semicolon separated-list of jobs.")
     else:
-        logging.info(f'{update.effective_user.username} has started searching of a new job')
+        logging.info(f'{update.message.username} has started searching of a new job')
         jobs = " ".join(raw_jobs)
         if ';' in jobs:
             jobs = [line.strip() for line in jobs.split(';')]
@@ -62,28 +62,28 @@ def search(update, context):
         for i, job in enumerate(jobs):
             logging.info(f"Starting the search for the {job} title [{i + 1}/{len(job)}]")
 
-            update.effective_user.reply_text('Deleting the harvest.txt file')
+            update.message.reply_text('Deleting the harvest.txt file')
             os.system('rm -rf harvest.txt')
 
-            update.effective_user.reply_text(f'Starting the stepstone web scraper for "{job}"')
-            os.system(f'{PYTHON_INTERPRETER} pyapplicant.py --stepstone --country de --limit 70 --search {job}')
-            update.effective_user.reply_text(f'Finished scraping the stepstone.de website for "{job}"')
+            update.message.reply_text(f'Starting the stepstone web scraper for "{job}"')
+            os.system(f'{PYTHON_INTERPRETER} pyapplicant.py --stepstone --country de --limit 70 --search "{job}"')
+            update.message.reply_text(f'Finished scraping the stepstone.de website for "{job}"')
 
-            update.effective_user.reply_text(f'Starting the google scraping for "{job}"')
-            os.system(f'{PYTHON_INTERPRETER} google_scraping.py --search {job} --limit 50 ')
-            update.effective_user.reply_text(f'Finished Google scraping for "{job}"')
+            update.message.reply_text(f'Starting the google scraping for "{job}"')
+            os.system(f'{PYTHON_INTERPRETER} google_scraping.py --search "{job}" --limit 50 ')
+            update.message.reply_text(f'Finished Google scraping for "{job}"')
 
-            update.effective_user.reply_text(f"[1/2] Starting the email harvesting for \"{job}\"")
+            update.message.reply_text(f"[1/2] Starting the email harvesting for \"{job}\"")
             os.system(f'{PYTHON_INTERPRETER} email_harvester.py --threads 250')
 
-            update.effective_user.reply_text(f"[2/2] Starting the email harvesting for \"{job}\"")
+            update.message.reply_text(f"[2/2] Starting the email harvesting for \"{job}\"")
             os.system(f'{PYTHON_INTERPRETER} email_harvester.py --dataset-file links.txt --threads 250')
 
             with open("harvest.txt", 'r') as harvest:
                 harvest_content = [line.strip() for line in harvest.readlines() if line.strip()]
-            update.effective_user.reply_text(f"The email-harvester has captured {len(harvest_content)} emails")
+            update.message.reply_text(f"The email-harvester has captured {len(harvest_content)} emails")
 
-            update.effective_user.reply_text(f"Removing duplicates from the harvest file "
+            update.message.reply_text(f"Removing duplicates from the harvest file "
                                              f"and comparing it with used emails")
             os.system(f"{PYTHON_INTERPRETER} harvest-fix.py harvest.txt > fixed_harvest.txt")
 
@@ -91,11 +91,11 @@ def search(update, context):
                 fixed_harvest = [line.strip() for line in f.readlines() if line.strip()]
 
             if fixed_harvest:
-                update.effective_user.reply_text(f"Starting the email delivery")
+                update.message.reply_text(f"Starting the email delivery")
                 os.system('bash run-delivery.sh fixed_harvest.txt')
-                update.effective_user.reply_text(f"All tasks have finished")
+                update.message.reply_text(f"All tasks have finished")
             else:
-                update.effective_user.reply_text("No new emails found, couldn't start the delivery.")
+                update.message.reply_text("No new emails found, couldn't start the delivery.")
 
 
 
