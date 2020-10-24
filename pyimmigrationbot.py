@@ -72,15 +72,15 @@ def search(update, context):
             os.system('rm -rf dataset')
 
             update.message.reply_text(f'Starting the stepstone web scraper for "{job}"')
-            os.system(f'timeout 30m {PYTHON_INTERPRETER} pyapplicant.py '
+            os.system(f'timeout 15m {PYTHON_INTERPRETER} pyapplicant.py '
                       f'--stepstone --country de --limit 70 --search "{job}"')
 
             update.message.reply_text(f'Starting the google web scraper for "{job}"')
-            os.system(f'timeout 30m {PYTHON_INTERPRETER} google_scraping.py '
+            os.system(f'timeout 15m {PYTHON_INTERPRETER} google_scraping.py '
                       f'--search "{job}" --limit 50 ')
 
             update.message.reply_text(f"[1/2] Starting the email-harvester for \"{job}\"")
-            os.system(f'timeout 30m {PYTHON_INTERPRETER} email_harvester.py '
+            os.system(f'timeout 15m {PYTHON_INTERPRETER} email_harvester.py '
                       f'--threads 250')
 
             update.message.reply_text(f"[2/2] Starting the email-harvester for \"{job}\"")

@@ -2,7 +2,7 @@
 import glob
 import logging
 import os
-from threading import Thread, Lock
+from threading import Thread, Lock, Event
 
 import urllib3
 
@@ -35,7 +35,6 @@ def get_arguments():
                         dest='url',
                         required=False,
                         help='Specify an URL to scrape the emails from')
-
     parser.add_argument('--dataset-dir',
                         dest='dataset_dir',
                         required=False,
@@ -137,6 +136,7 @@ def parse_contacts_dataset_dir(dataset_dir):
 def run_email_harvesting(contacts, threads_limit):
     scraper = EmailScraper()
 
+    event = Event()
     scraper_threads = []
 
     for i, line in enumerate(contacts):
@@ -152,7 +152,7 @@ def run_email_harvesting(contacts, threads_limit):
             company = line
             url = line
         else:
-            logging.warning(f'Unsupported line format: {line}, skipping it')
+            logging.warning(f'Unsupported line format: {line}')
             continue
 
         while len(scraper_threads) >= threads_limit:
@@ -165,8 +165,10 @@ def run_email_harvesting(contacts, threads_limit):
         logging.info(f'Collecting emails from {company} [{i + 1}/{len(contacts)}]')
         scraper_thread.start()
 
-    while any(thread.is_alive() for thread in scraper_threads):
-        pass
+    for thread in scraper_threads:
+        thread.join(30)
+        event.set()
+        thread.join()
 
 
 if options.url:
