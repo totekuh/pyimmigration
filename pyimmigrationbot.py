@@ -86,7 +86,11 @@ def search(update, context):
                 update.message.reply_text(f"The email-harvester has captured {len(fixed_harvest)} new emails")
                 update.message.reply_text("Starting the email delivery.")
                 os.system('bash run-delivery.sh fixed_harvest.txt')
-                update.message.reply_text(f"All tasks have finished")
+
+                with open('used_emails.txt', 'r') as f:
+                    used_emails = [line.strip() for line in f.readlines() if line.strip()]
+
+                update.message.reply_text(f"All tasks have finished. Emails sent in total: {len(used_emails)}")
             else:
                 update.message.reply_text("No new emails found, couldn't start the delivery.")
 
