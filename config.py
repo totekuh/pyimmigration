@@ -1,2 +1,2 @@
-TOKEN = "GET_YOUR_OWN_TOKEN_FROM_@BOTFATHER"
-WHITELIST = ['your_mom']
+TOKEN = "sasi"
+WHITELIST = ['sasi']
