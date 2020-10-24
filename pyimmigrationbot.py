@@ -53,7 +53,7 @@ def search(update, context):
         update.message.reply_text("You didn't provide a job to search for. "
                                          "Please pass a job title or a semicolon separated-list of jobs.")
     else:
-        logging.info(f'{update.message.username} has started searching of a new job')
+        logging.info(f'{update.effective_user.username} has started searching of a new job')
         jobs = " ".join(raw_jobs)
         if ';' in jobs:
             jobs = [line.strip() for line in jobs.split(';')]
