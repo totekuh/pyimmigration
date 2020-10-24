@@ -68,6 +68,7 @@ def search(update, context):
             logging.info(f"Starting the search for the {job} title [{i + 1}/{len(job)}]")
 
             os.system('rm -rf harvest.txt')
+            os.system('rm -rf links.txt')
             os.system('rm -rf dataset')
 
             update.message.reply_text(f'Starting the stepstone web scraper for "{job}"')
