@@ -65,42 +65,48 @@ def search(update, context):
                 update.message.reply_text('I can break rules, too. Goodbye.')
                 return
 
-            logging.info(f"Starting the search for the {job} title [{i + 1}/{len(jobs)}]")
+            update.message.reply_text(f"1. Cleaning up and initiating a new job search '{job}' [{i + 1}/{len(jobs)}]")
 
             os.system('rm -rf harvest.txt')
             os.system('rm -rf links.txt')
             os.system('rm -rf dataset')
 
-            update.message.reply_text(f'Starting the stepstone web scraper for "{job}"')
+            update.message.reply_text(f'2. Starting the stepstone web scraper for "{job}"')
             os.system(f'timeout 15m {PYTHON_INTERPRETER} pyapplicant.py '
                       f'--stepstone --country de --limit 70 --search "{job}"')
 
-            update.message.reply_text(f'Starting the google web scraper for "{job}"')
+            update.message.reply_text(f'3. Starting the google web scraper for "{job}"')
             os.system(f'timeout 15m {PYTHON_INTERPRETER} google_scraping.py '
                       f'--search "{job}" --limit 50 ')
 
-            update.message.reply_text(f"[1/2] Starting the email-harvester for \"{job}\"")
+            update.message.reply_text(f"4.1 Starting the email-harvester for \"{job}\"")
             os.system(f'timeout 15m {PYTHON_INTERPRETER} email_harvester.py '
                       f'--threads 250')
 
-            update.message.reply_text(f"[2/2] Starting the email-harvester for \"{job}\"")
-            os.system(f'timeout 1h {PYTHON_INTERPRETER} email_harvester.py '
+            update.message.reply_text(f"4.2 Starting the email-harvester for \"{job}\"")
+            os.system(f'timeout 15m {PYTHON_INTERPRETER} email_harvester.py '
                       f'--dataset-file links.txt --threads 250')
 
-            with open('fixed_harvest.txt', 'r') as f:
-                fixed_harvest = [line.strip() for line in f.readlines() if line.strip()]
+            os.system(f'{PYTHON_INTERPRETER} harvest-fix.py harvest.txt > fixed_harvest.txt')
 
-            if fixed_harvest:
-                update.message.reply_text(f"The email-harvester has captured {len(fixed_harvest)} new emails")
-                update.message.reply_text("Starting the email delivery.")
-                os.system('bash run-delivery.sh fixed_harvest.txt')
+            if os.path.exists('fixed_harvest.txt'):
+                with open('fixed_harvest.txt', 'r') as f:
+                    fixed_harvest = [line.strip() for line in f.readlines() if line.strip()]
+                if fixed_harvest:
+                    update.message.reply_text(f"5.1 The email-harvester"
+                                              f" has captured {len(fixed_harvest)} new emails")
+                    update.message.reply_text("5.2 Starting the email delivery.")
+                    os.system('bash run-delivery.sh fixed_harvest.txt')
 
-                with open('used_emails.txt', 'r') as f:
-                    used_emails = [line.strip() for line in f.readlines() if line.strip()]
+                    with open('used_emails.txt', 'r') as f:
+                        used_emails = [line.strip() for line in f.readlines() if line.strip()]
 
-                update.message.reply_text(f"All tasks have finished. Emails sent in total: {len(used_emails)}")
+                    update.message.reply_text(f"All tasks have finished. "
+                                              f"{os.linesep}"
+                                              f"Emails sent in total: {len(used_emails)}")
             else:
-                update.message.reply_text("No new emails found, couldn't start the delivery.")
+                update.message.reply_text("5. Skipping the delivery, "
+                                          "since all discovered emails have been already used")
 
 
 """

@@ -130,9 +130,9 @@ class StepstoneCrawler:
                         else:
                             company_url = tag.full_text.strip()
             if not company_url:
-                logging.warning(f"Failed to extract the company URL from '{company_name}'")
+                # do nothing
+                pass
             else:
-
                 chunks = company_url.split('/')
 
                 if len(chunks) > 2:
