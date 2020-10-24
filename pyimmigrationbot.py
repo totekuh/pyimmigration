@@ -46,12 +46,13 @@ def start(update, context):
     """Send a message when the command /start is issued."""
     update.message.reply_text("Starting the pyimmigration service")
 
+
 @whitelist_only
 def search(update, context):
     raw_jobs = context.args
     if not raw_jobs:
         update.message.reply_text("You didn't provide a job to search for. "
-                                         "Please pass a job title or a semicolon separated-list of jobs.")
+                                  "Please pass a job title or a semicolon separated-list of jobs.")
     else:
         logging.info(f'{update.effective_user.username} has started searching of a new job')
         jobs = " ".join(raw_jobs)
@@ -62,45 +63,32 @@ def search(update, context):
         for i, job in enumerate(jobs):
             logging.info(f"Starting the search for the {job} title [{i + 1}/{len(job)}]")
 
-            update.message.reply_text('Deleting the harvest.txt file')
             os.system('rm -rf harvest.txt')
 
             update.message.reply_text(f'Starting the stepstone web scraper for "{job}"')
             os.system(f'{PYTHON_INTERPRETER} pyapplicant.py --stepstone --country de --limit 70 --search "{job}"')
             update.message.reply_text(f'Finished scraping the stepstone.de website for "{job}"')
 
-            update.message.reply_text(f'Starting the google scraping for "{job}"')
+            update.message.reply_text(f'Starting the google web scraper for "{job}"')
             os.system(f'{PYTHON_INTERPRETER} google_scraping.py --search "{job}" --limit 50 ')
             update.message.reply_text(f'Finished Google scraping for "{job}"')
 
-            update.message.reply_text(f"[1/2] Starting the email harvesting for \"{job}\"")
+            update.message.reply_text(f"[1/2] Starting the email-harvester for \"{job}\"")
             os.system(f'{PYTHON_INTERPRETER} email_harvester.py --threads 250')
 
-            update.message.reply_text(f"[2/2] Starting the email harvesting for \"{job}\"")
+            update.message.reply_text(f"[2/2] Starting the email-harvester for \"{job}\"")
             os.system(f'{PYTHON_INTERPRETER} email_harvester.py --dataset-file links.txt --threads 250')
-
-            with open("harvest.txt", 'r') as harvest:
-                harvest_content = [line.strip() for line in harvest.readlines() if line.strip()]
-            update.message.reply_text(f"The email-harvester has captured {len(harvest_content)} emails")
-
-            update.message.reply_text(f"Removing duplicates from the harvest file "
-                                             f"and comparing it with used emails")
-            os.system(f"{PYTHON_INTERPRETER} harvest-fix.py harvest.txt > fixed_harvest.txt")
 
             with open('fixed_harvest.txt', 'r') as f:
                 fixed_harvest = [line.strip() for line in f.readlines() if line.strip()]
 
             if fixed_harvest:
-                update.message.reply_text(f"Starting the email delivery")
+                update.message.reply_text(f"The email-harvester has captured {len(fixed_harvest)} new emails")
+                update.message.reply_text("Starting the email delivery.")
                 os.system('bash run-delivery.sh fixed_harvest.txt')
                 update.message.reply_text(f"All tasks have finished")
             else:
                 update.message.reply_text("No new emails found, couldn't start the delivery.")
-
-
-
-
-
 
 
 """
