@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import json
-import os
-from threading import Thread
 import logging
+import os
 from os import linesep
 from pathlib import Path
-import json
+from threading import Thread
+
 import requests
 from bs4 import BeautifulSoup as bs
 from requests_html import HTMLSession, HTML
@@ -120,8 +120,7 @@ class StepstoneCrawler:
                             if '@' in tag.full_text:
                                 logging.info(f"Capturing the email of '{company_name}' - '{tag.full_text}'")
                                 with open('harvest.txt', 'a', encoding='utf-8') as file:
-                                    file.write(tag.full_text)
-                                    file.write(os.filesep)
+                                    file.write(f'{tag.full_text}{os.linesep}')
                                 return
                             company_url = f'https://{tag.full_text.strip()}'
                         else:

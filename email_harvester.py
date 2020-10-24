@@ -3,6 +3,7 @@ import glob
 import logging
 import os
 from threading import Thread, Lock
+
 import urllib3
 
 urllib3.disable_warnings()
@@ -30,6 +31,11 @@ def get_arguments():
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
+    parser.add_argument('--url',
+                        dest='url',
+                        required=False,
+                        help='Specify an URL to scrape the emails from')
+
     parser.add_argument('--dataset-dir',
                         dest='dataset_dir',
                         required=False,
@@ -48,14 +54,15 @@ def get_arguments():
                              f'Default is {DEFAULT_THREADS_LIMIT}')
     options = parser.parse_args()
 
-    if options.dataset_dir and options.dataset_file:
-        parser.error("You can't use both --dataset-dir and --dataset-file "
-                     "arguments in the same time.")
+    if not options.url:
+        if options.dataset_dir and options.dataset_file:
+            parser.error("You can't use both --dataset-dir and --dataset-file "
+                         "arguments in the same time.")
 
-    if not options.dataset_dir and not options.dataset_file:
-        logging.info("Neither --dataset-dir nor --dataset-file have been provided. "
-                     f"Falling back to the default --dataset-dir {DATASET_DIR} argument.")
-        options.dataset_dir = DATASET_DIR
+        if not options.dataset_dir and not options.dataset_file:
+            logging.info("Neither --dataset-dir nor --dataset-file have been provided. "
+                         f"Falling back to the default --dataset-dir {DATASET_DIR} argument.")
+            options.dataset_dir = DATASET_DIR
 
     return options
 
@@ -162,7 +169,9 @@ def run_email_harvesting(contacts, threads_limit):
         pass
 
 
-if options.dataset_dir:
+if options.url:
+    contacts = [options.url]
+elif options.dataset_dir:
     contacts = parse_contacts_dataset_dir(dataset_dir=options.dataset_dir)
 else:
     contacts = parse_contacts_dataset_file(dataset_file=options.dataset_file)

@@ -4,7 +4,7 @@ import os
 import requests
 import bs4
 import logging
-
+from random import choice
 logging.basicConfig(format='[%(asctime)s %(levelname)s]: %(message)s',
                     datefmt='%m/%d/%Y %I:%M:%S %p',
                     level='INFO')
@@ -110,8 +110,8 @@ def scrape(keyword, output_file, limit):
             for link in new_links:
                 links.add(link)
 
-            logging.info("Sleeping for 5 seconds")
-            sleep(5)
+            logging.info("Sleeping for a few seconds")
+            sleep(choice(range(0,5)))
         else:
             logging.error("Couldn't find the next page URL")
             break
