@@ -61,23 +61,30 @@ def search(update, context):
         else:
             jobs = [jobs.strip()]
         for i, job in enumerate(jobs):
+            if '&&' in job or '&' in job or ';' in job or '|' in job:
+                update.message.reply_text('I can break rules, too. Goodbye.')
+                return
+
             logging.info(f"Starting the search for the {job} title [{i + 1}/{len(job)}]")
 
             os.system('rm -rf harvest.txt')
+            os.system('rm -rf dataset')
 
             update.message.reply_text(f'Starting the stepstone web scraper for "{job}"')
-            os.system(f'{PYTHON_INTERPRETER} pyapplicant.py --stepstone --country de --limit 70 --search "{job}"')
-            update.message.reply_text(f'Finished scraping the stepstone.de website for "{job}"')
+            os.system(f'timeout 30m {PYTHON_INTERPRETER} pyapplicant.py '
+                      f'--stepstone --country de --limit 70 --search "{job}"')
 
             update.message.reply_text(f'Starting the google web scraper for "{job}"')
-            os.system(f'{PYTHON_INTERPRETER} google_scraping.py --search "{job}" --limit 50 ')
-            update.message.reply_text(f'Finished Google scraping for "{job}"')
+            os.system(f'timeout 30m {PYTHON_INTERPRETER} google_scraping.py '
+                      f'--search "{job}" --limit 50 ')
 
             update.message.reply_text(f"[1/2] Starting the email-harvester for \"{job}\"")
-            os.system(f'{PYTHON_INTERPRETER} email_harvester.py --threads 250')
+            os.system(f'timeout 1h {PYTHON_INTERPRETER} email_harvester.py '
+                      f'--threads 250')
 
             update.message.reply_text(f"[2/2] Starting the email-harvester for \"{job}\"")
-            os.system(f'{PYTHON_INTERPRETER} email_harvester.py --dataset-file links.txt --threads 250')
+            os.system(f'timeout 1h {PYTHON_INTERPRETER} email_harvester.py '
+                      f'--dataset-file links.txt --threads 250')
 
             with open('fixed_harvest.txt', 'r') as f:
                 fixed_harvest = [line.strip() for line in f.readlines() if line.strip()]
