@@ -59,19 +59,18 @@ def search(update, context):
             jobs = [line.strip() for line in jobs.split(';')]
         else:
             jobs = [jobs.strip()]
-        for job in jobs:
-            logging.info(f"Starting the search for the {job} title")
+        for i, job in enumerate(jobs):
+            logging.info(f"Starting the search for the {job} title [{i + 1}/{len(job)}]")
 
             update.effective_user.reply_text('Deleting the harvest.txt file')
             os.system('rm -rf harvest.txt')
 
             update.effective_user.reply_text(f'Starting the stepstone web scraper for "{job}"')
-            os.system(f'{PYTHON_INTERPRETER} pyapplicant.py --stepstone --country de --limit 50 --search {job}')
+            os.system(f'{PYTHON_INTERPRETER} pyapplicant.py --stepstone --country de --limit 70 --search {job}')
             update.effective_user.reply_text(f'Finished scraping the stepstone.de website for "{job}"')
 
-
             update.effective_user.reply_text(f'Starting the google scraping for "{job}"')
-            os.system(f'{PYTHON_INTERPRETER} google_scraping.py --search {job} --limit 30 ')
+            os.system(f'{PYTHON_INTERPRETER} google_scraping.py --search {job} --limit 50 ')
             update.effective_user.reply_text(f'Finished Google scraping for "{job}"')
 
             update.effective_user.reply_text(f"[1/2] Starting the email harvesting for \"{job}\"")
@@ -82,7 +81,7 @@ def search(update, context):
 
             with open("harvest.txt", 'r') as harvest:
                 harvest_content = [line.strip() for line in harvest.readlines() if line.strip()]
-            update.effective_user.reply_text(f"Finished email harvesting with {len(harvest_content)}")
+            update.effective_user.reply_text(f"The email-harvester has captured {len(harvest_content)} emails")
 
             update.effective_user.reply_text(f"Removing duplicates from the harvest file "
                                              f"and comparing it with used emails")
@@ -96,7 +95,7 @@ def search(update, context):
                 os.system('bash run-delivery.sh fixed_harvest.txt')
                 update.effective_user.reply_text(f"All tasks have finished")
             else:
-                update.effective_user.reply_text("No new emails found, can't start the delivery.")
+                update.effective_user.reply_text("No new emails found, couldn't start the delivery.")
 
 
 
