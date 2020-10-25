@@ -3,7 +3,7 @@ import os
 from threading import Thread
 from time import sleep
 
-PYTHON_INTERPRETER = 'python3'
+PYTHON_INTERPRETER = 'python3.7'
 USED_SEARCH_KEYWORD_FILE = 'search-keywords.txt'
 
 import logging
@@ -152,21 +152,20 @@ def start_job_search(job, update):
     os.system('rm -rf harvest.txt')
     os.system('rm -rf links.txt')
     os.system('rm -rf dataset')
-    # update.message.reply_text(f'Starting the stepstone webscraper for "{job}"')
     os.system(f'timeout 15m {PYTHON_INTERPRETER} pyapplicant.py '
               f'--stepstone --country de --limit 70 --search "{job}"')
-    # update.message.reply_text(f'Starting the google webscraper for "{job}"')
     os.system(f'timeout 15m {PYTHON_INTERPRETER} google_scraping.py '
-              f'--search "{job}" --limit 50 ')
-    # update.message.reply_text(f"[1/2] Starting the email-harvester for \"{job}\"")
+              f'--search "{job}" --limit 70 ')
     os.system(f'timeout 15m {PYTHON_INTERPRETER} email_harvester.py '
               f'--threads 250')
-    # update.message.reply_text(f"[2/2] Starting the email-harvester for \"{job}\"")
     os.system(f'timeout 15m {PYTHON_INTERPRETER} email_harvester.py '
               f'--dataset-file links.txt --threads 250')
-    os.system(f'{PYTHON_INTERPRETER} harvest-fix.py harvest.txt > fixed_harvest.txt')
-    if os.path.exists('fixed_harvest.txt'):
-        with open('fixed_harvest.txt', 'r') as f:
+
+    fixed_harvest_file = 'fixed_harvest.txt'
+
+    os.system(f'{PYTHON_INTERPRETER} harvest-fix.py harvest.txt > {fixed_harvest_file}')
+    if os.path.exists(f'{fixed_harvest_file}'):
+        with open(f'{fixed_harvest_file}', 'r') as f:
             fixed_harvest = [line.strip() for line in f.readlines() if line.strip()]
         if fixed_harvest:
             update.message.reply_text(f"The email-harvester"
@@ -182,10 +181,11 @@ def start_job_search(job, update):
                                       f"Emails sent in total: {len(used_emails)}")
         else:
             update.message.reply_text("Skipping the delivery, "
-                                      "since all discovered emails have been already used")
+                                      "since all discovered emails have been already used.\n"
+                                      "The harvest file doesn't contain new entries.")
     else:
         update.message.reply_text("Skipping the delivery, "
-                                  "since all discovered emails have been already used")
+                                  f"as the '{fixed_harvest_file}' file doesn't exist")
 
 
 """
