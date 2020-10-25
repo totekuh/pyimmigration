@@ -144,6 +144,10 @@ def start_job_search(job, update):
             with open(USED_SEARCH_KEYWORD_FILE, 'a') as f:
                 f.write(job.strip())
                 f.write(os.linesep)
+    else:
+        with open(USED_SEARCH_KEYWORD_FILE, 'a') as f:
+            f.write(job.strip())
+            f.write(os.linesep)
 
     os.system('rm -rf harvest.txt')
     os.system('rm -rf links.txt')
