@@ -46,7 +46,7 @@ def show_help(update, context):
     update.message.reply_text(howto, parse_mode=ParseMode.MARKDOWN)
 
 
-INTERVAL = 1 * 60
+INTERVAL = 2 * 60 * 60
 SEARCH_LOCK = False
 
 
