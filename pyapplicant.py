@@ -87,9 +87,10 @@ class StepstoneCrawler:
     def __init__(self, limit=None):
         self.jobs = []
         try:
-            self.session = HTMLSession()
+            # self.session = HTMLSession()
+            self.session = requests.Session()
         except Exception as e:
-            logging.error(f'Failed to run the Chrome browser: {e}')
+            logging.error(f'Failed to create a new session: {e}')
             exit(1)
         self.limit = limit
 
