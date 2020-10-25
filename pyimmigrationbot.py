@@ -62,14 +62,18 @@ class SearchBackgroundThread:
         global SEARCH_LOCK
         while True:
             if SEARCH_LOCK:
-                self.update.message.reply_text("The service is locked.\n"
-                                               "There is a search already in progress.")
+                self.update.message.reply_text("The background search service is locked.\n"
+                                               "There is a job already in progress.")
             elif os.path.exists(USED_SEARCH_KEYWORD_FILE):
                 with open(USED_SEARCH_KEYWORD_FILE, 'r') as f:
                     search_keywords = [line.strip() for line in f.readlines() if line.strip()]
 
+                    self.update.message.reply_text("Starting a new background search thread.\n"
+                                                   f"The thread will search for {len(search_keywords)} job titles")
+
                     SEARCH_LOCK = True
                     for keyword in search_keywords:
+                        self.update.message.reply_text(f"Starting the searching engine for '{keyword}'")
                         start_job_search(keyword, self.update)
                     SEARCH_LOCK = False
             else:
@@ -77,6 +81,7 @@ class SearchBackgroundThread:
                                                f'Use need to provide them in the "{USED_SEARCH_KEYWORD_FILE}" file or '
                                                f'use the /search command to automatically add new ones to the keywords list.')
 
+            # self.update.message.reply_text(f'Sleeping for {INTERVAL//60} minutes')
             self.update.message.reply_text(f'Sleeping for {INTERVAL} seconds')
             sleep(INTERVAL)
 
@@ -107,7 +112,7 @@ def change_interval(update, context):
 def search(update, context):
     global SEARCH_LOCK
     if SEARCH_LOCK:
-        update.message.reply_text("Couldn't start a new job searching, as there is one already in progress.")
+        update.message.reply_text("Couldn't initiate a new job search, as there is one already in progress.")
         return
     else:
         SEARCH_LOCK = True
@@ -143,10 +148,10 @@ def start_job_search(job, update):
     os.system('rm -rf harvest.txt')
     os.system('rm -rf links.txt')
     os.system('rm -rf dataset')
-    update.message.reply_text(f'Starting the stepstone web scraper for "{job}"')
+    update.message.reply_text(f'Starting the stepstone webscraper for "{job}"')
     os.system(f'timeout 15m {PYTHON_INTERPRETER} pyapplicant.py '
               f'--stepstone --country de --limit 70 --search "{job}"')
-    update.message.reply_text(f'Starting the google web scraper for "{job}"')
+    update.message.reply_text(f'Starting the google webscraper for "{job}"')
     os.system(f'timeout 15m {PYTHON_INTERPRETER} google_scraping.py '
               f'--search "{job}" --limit 50 ')
     update.message.reply_text(f"[1/2] Starting the email-harvester for \"{job}\"")
