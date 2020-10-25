@@ -1,7 +1,10 @@
 #!/usr/bin/env python3.7
 import os
+from threading import Thread
+from time import sleep
 
 PYTHON_INTERPRETER = 'python3'
+USED_SEARCH_KEYWORD_FILE = 'search-keywords.txt'
 
 import logging
 from functools import wraps
@@ -34,21 +37,80 @@ def whitelist_only(func):
 
 def show_help(update, context):
     """Send a message when the command /help is issued."""
-    howto = (
-        f"This bot starts the pyimmigration engine for the job searching. \n"
-        f"Please use the /search <Job title> for starting email harvesting and automatic email develiry."
-    )
+    howto = f"This bot starts the pyimmigration engine for the job searching. \n" + \
+            f"Use the /search <Job title> command for starting email harvesting " + \
+            f"and automated email delivery. \n" + \
+            f"Use the /start command to enable the background search service. \n" + \
+            f"Use the /interval <seconds> command to specify a new " + \
+            f"interval between background searches."
     update.message.reply_text(howto, parse_mode=ParseMode.MARKDOWN)
+
+
+INTERVAL = 1 * 60
+SEARCH_LOCK = False
+
+
+class SearchBackgroundThread:
+    def __init__(self, update):
+        self.update = update
+        self.thread = Thread(target=self.run)
+
+    def start(self):
+        self.thread.start()
+
+    def run(self):
+        global SEARCH_LOCK
+        while True:
+            if SEARCH_LOCK:
+                self.update.message.reply_text("The service is locked.\n"
+                                               "There is a search already in progress.")
+            elif os.path.exists(USED_SEARCH_KEYWORD_FILE):
+                with open(USED_SEARCH_KEYWORD_FILE, 'r') as f:
+                    search_keywords = [line.strip() for line in f.readlines() if line.strip()]
+
+                    SEARCH_LOCK = True
+                    for keyword in search_keywords:
+                        start_job_search(keyword, self.update)
+                    SEARCH_LOCK = False
+            else:
+                self.update.message.reply_text('There are no saved keywords to use for searching. \n'
+                                               f'Use need to provide them in the "{USED_SEARCH_KEYWORD_FILE}" file or '
+                                               f'use the /search command to automatically add new ones to the keywords list.')
+
+            self.update.message.reply_text(f'Sleeping for {INTERVAL} seconds')
+            sleep(INTERVAL)
 
 
 @whitelist_only
 def start(update, context):
-    """Send a message when the command /start is issued."""
     update.message.reply_text("Starting the pyimmigration service")
+
+    search_background_thread = SearchBackgroundThread(update)
+    search_background_thread.start()
+
+
+@whitelist_only
+def change_interval(update, context):
+    args = context.args
+
+    if not args or len(args) != 1:
+        update.message.reply_text("You didn't provide a new valid interval")
+    else:
+        interval = context.args[0]
+        update.message.reply_text(f"Changing the interval to {interval} seconds")
+
+        global INTERVAL
+        INTERVAL = int(interval)
 
 
 @whitelist_only
 def search(update, context):
+    global SEARCH_LOCK
+    if SEARCH_LOCK:
+        update.message.reply_text("Couldn't start a new job searching, as there is one already in progress.")
+        return
+    else:
+        SEARCH_LOCK = True
     raw_jobs = context.args
     if not raw_jobs:
         update.message.reply_text("You didn't provide a job to search for. "
@@ -64,49 +126,54 @@ def search(update, context):
             if '&&' in job or '&' in job or ';' in job or '|' in job:
                 update.message.reply_text('I can break rules, too. Goodbye.')
                 return
+            update.message.reply_text(f"Initiating a new job search '{job}' [{i + 1}/{len(jobs)}]")
+            start_job_search(job, update)
+        SEARCH_LOCK = False
 
-            update.message.reply_text(f"1. Cleaning up and initiating a new job search '{job}' [{i + 1}/{len(jobs)}]")
 
-            os.system('rm -rf harvest.txt')
-            os.system('rm -rf links.txt')
-            os.system('rm -rf dataset')
+def start_job_search(job, update):
+    if os.path.exists(USED_SEARCH_KEYWORD_FILE):
+        with open(USED_SEARCH_KEYWORD_FILE, 'r') as f:
+            content = [line.strip() for line in f.readlines() if line.strip()]
+        if job.strip() not in content:
+            with open(USED_SEARCH_KEYWORD_FILE, 'a') as f:
+                f.write(job.strip())
+                f.write(os.linesep)
 
-            update.message.reply_text(f'2. Starting the stepstone web scraper for "{job}"')
-            os.system(f'timeout 15m {PYTHON_INTERPRETER} pyapplicant.py '
-                      f'--stepstone --country de --limit 70 --search "{job}"')
+    os.system('rm -rf harvest.txt')
+    os.system('rm -rf links.txt')
+    os.system('rm -rf dataset')
+    update.message.reply_text(f'Starting the stepstone web scraper for "{job}"')
+    os.system(f'timeout 15m {PYTHON_INTERPRETER} pyapplicant.py '
+              f'--stepstone --country de --limit 70 --search "{job}"')
+    update.message.reply_text(f'Starting the google web scraper for "{job}"')
+    os.system(f'timeout 15m {PYTHON_INTERPRETER} google_scraping.py '
+              f'--search "{job}" --limit 50 ')
+    update.message.reply_text(f"[1/2] Starting the email-harvester for \"{job}\"")
+    os.system(f'timeout 15m {PYTHON_INTERPRETER} email_harvester.py '
+              f'--threads 250')
+    update.message.reply_text(f"[2/2] Starting the email-harvester for \"{job}\"")
+    os.system(f'timeout 15m {PYTHON_INTERPRETER} email_harvester.py '
+              f'--dataset-file links.txt --threads 250')
+    os.system(f'{PYTHON_INTERPRETER} harvest-fix.py harvest.txt > fixed_harvest.txt')
+    if os.path.exists('fixed_harvest.txt'):
+        with open('fixed_harvest.txt', 'r') as f:
+            fixed_harvest = [line.strip() for line in f.readlines() if line.strip()]
+        if fixed_harvest:
+            update.message.reply_text(f"The email-harvester"
+                                      f" has captured {len(fixed_harvest)} new emails. \n"
+                                      f"Starting the email delivery.")
+            os.system('bash run-delivery.sh fixed_harvest.txt')
 
-            update.message.reply_text(f'3. Starting the google web scraper for "{job}"')
-            os.system(f'timeout 15m {PYTHON_INTERPRETER} google_scraping.py '
-                      f'--search "{job}" --limit 50 ')
+            with open('used_emails.txt', 'r') as f:
+                used_emails = [line.strip() for line in f.readlines() if line.strip()]
 
-            update.message.reply_text(f"4.1 Starting the email-harvester for \"{job}\"")
-            os.system(f'timeout 15m {PYTHON_INTERPRETER} email_harvester.py '
-                      f'--threads 250')
-
-            update.message.reply_text(f"4.2 Starting the email-harvester for \"{job}\"")
-            os.system(f'timeout 15m {PYTHON_INTERPRETER} email_harvester.py '
-                      f'--dataset-file links.txt --threads 250')
-
-            os.system(f'{PYTHON_INTERPRETER} harvest-fix.py harvest.txt > fixed_harvest.txt')
-
-            if os.path.exists('fixed_harvest.txt'):
-                with open('fixed_harvest.txt', 'r') as f:
-                    fixed_harvest = [line.strip() for line in f.readlines() if line.strip()]
-                if fixed_harvest:
-                    update.message.reply_text(f"5.1 The email-harvester"
-                                              f" has captured {len(fixed_harvest)} new emails")
-                    update.message.reply_text("5.2 Starting the email delivery.")
-                    os.system('bash run-delivery.sh fixed_harvest.txt')
-
-                    with open('used_emails.txt', 'r') as f:
-                        used_emails = [line.strip() for line in f.readlines() if line.strip()]
-
-                    update.message.reply_text(f"All tasks have finished. "
-                                              f"{os.linesep}"
-                                              f"Emails sent in total: {len(used_emails)}")
-            else:
-                update.message.reply_text("5. Skipping the delivery, "
-                                          "since all discovered emails have been already used")
+            update.message.reply_text(f"All tasks have finished. "
+                                      f"{os.linesep}"
+                                      f"Emails sent in total: {len(used_emails)}")
+    else:
+        update.message.reply_text("5. Skipping the delivery, "
+                                  "since all discovered emails have been already used")
 
 
 """
@@ -131,6 +198,7 @@ def main():
     dp.add_handler(CommandHandler("help", show_help))
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("search", search))
+    dp.add_handler(CommandHandler("interval", change_interval))
     dp.add_error_handler(error)
 
     updater.start_polling()
