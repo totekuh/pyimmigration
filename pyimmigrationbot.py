@@ -153,11 +153,11 @@ def start_job_search(job, update):
     os.system('rm -rf links.txt')
     os.system('rm -rf dataset')
     os.system(f'timeout 15m {PYTHON_INTERPRETER} pyapplicant.py '
-              f'--stepstone --country de --limit 70 --search "{job}"')
+              f'--stepstone --country de --limit 200 --search "{job}"')
     os.system(f'timeout 15m {PYTHON_INTERPRETER} google_scraping.py '
-              f'--search "{job}" --limit 70 ')
+              f'--search "{job}" --limit 100 ')
     os.system(f'timeout 15m {PYTHON_INTERPRETER} stellenanzeigen_scraping.py '
-              f'--search "{job}" --limit 70 ')
+              f'--search "{job}" --limit 100 ')
     os.system(f'timeout 15m {PYTHON_INTERPRETER} email_harvester.py '
               f'--threads 250')
     os.system(f'timeout 15m {PYTHON_INTERPRETER} email_harvester.py '

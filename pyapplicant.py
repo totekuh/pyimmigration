@@ -6,6 +6,7 @@ from os import linesep
 from pathlib import Path
 from threading import Thread
 
+
 def patch_pyppeteer():
     import pyppeteer.connection
     original_method = pyppeteer.connection.websockets.client.connect
@@ -16,6 +17,8 @@ def patch_pyppeteer():
         return original_method(*args, **kwargs)
 
     pyppeteer.connection.websockets.client.connect = new_method
+
+
 patch_pyppeteer()
 
 import requests
