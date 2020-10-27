@@ -46,7 +46,7 @@ def show_help(update, context):
     update.message.reply_text(howto, parse_mode=ParseMode.MARKDOWN)
 
 
-INTERVAL = 2 * 60 * 60
+INTERVAL = 3 * 60 * 60
 SEARCH_LOCK = False
 
 
@@ -156,6 +156,8 @@ def start_job_search(job, update):
               f'--stepstone --country de --limit 70 --search "{job}"')
     os.system(f'timeout 15m {PYTHON_INTERPRETER} google_scraping.py '
               f'--search "{job}" --limit 70 ')
+    os.system(f'timeout 15m {PYTHON_INTERPRETER} stellenanzeigen_scraping.py '
+              f'--search "{job}" --limit 70 ')
     os.system(f'timeout 15m {PYTHON_INTERPRETER} email_harvester.py '
               f'--threads 250')
     os.system(f'timeout 15m {PYTHON_INTERPRETER} email_harvester.py '
@@ -169,23 +171,16 @@ def start_job_search(job, update):
             fixed_harvest = [line.strip() for line in f.readlines() if line.strip()]
         if fixed_harvest:
             update.message.reply_text(f"The email-harvester"
-                                      f" has captured {len(fixed_harvest)} new emails. \n"
+                                      f" has captured {len(fixed_harvest)} new email(s). \n"
                                       f"Starting the email delivery.")
             os.system('bash run-delivery.sh fixed_harvest.txt')
 
             with open('used_emails.txt', 'r') as f:
                 used_emails = [line.strip() for line in f.readlines() if line.strip()]
 
-            update.message.reply_text(f"All tasks have finished. "
+            update.message.reply_text(f"The job search for '{job}' has been finished. "
                                       f"{os.linesep}"
                                       f"Emails sent in total: {len(used_emails)}")
-        else:
-            update.message.reply_text("Skipping the delivery, "
-                                      "since all discovered emails have been already used.\n"
-                                      "The harvest file doesn't contain new entries.")
-    else:
-        update.message.reply_text("Skipping the delivery, "
-                                  f"as the '{fixed_harvest_file}' file doesn't exist")
 
 
 """
