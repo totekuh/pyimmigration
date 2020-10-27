@@ -6,6 +6,18 @@ from os import linesep
 from pathlib import Path
 from threading import Thread
 
+def patch_pyppeteer():
+    import pyppeteer.connection
+    original_method = pyppeteer.connection.websockets.client.connect
+
+    def new_method(*args, **kwargs):
+        kwargs['ping_interval'] = None
+        kwargs['ping_timeout'] = None
+        return original_method(*args, **kwargs)
+
+    pyppeteer.connection.websockets.client.connect = new_method
+patch_pyppeteer()
+
 import requests
 from bs4 import BeautifulSoup as bs
 from requests_html import HTMLSession, HTML
